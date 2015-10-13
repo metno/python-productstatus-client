@@ -41,4 +41,8 @@ print model_run_resource
 
 print [x.href for x in model_run_resource.data]
 # output: [u'file:///path/to/my/dataset.nc']
+
+new_resource = collection.post({'data_provider': 'my_data_provider', 'reference_time': '2015-01-01T00:00:00Z'})
+print new_resource.id
+# output: 2
 ```

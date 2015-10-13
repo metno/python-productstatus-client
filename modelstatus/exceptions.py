@@ -13,6 +13,11 @@ class ClientErrorException(ModelstatusException):
     pass
 
 
+class NotFoundException(ModelstatusException):
+    """Thrown when the server returns 404."""
+    pass
+
+
 class ServiceUnavailableException(ModelstatusException):
     """Thrown when the server returns a 5xx error."""
     pass

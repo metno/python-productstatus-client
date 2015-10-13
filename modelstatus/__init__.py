@@ -5,7 +5,6 @@ Modelstatus service.
 
 import requests
 import json
-import logging
 import dateutil.parser
 import datetime
 import time
@@ -91,13 +90,16 @@ class BaseCollection(object):
     Base object used to access the REST service.
     """
 
-    def __init__(self, base_url, verify_ssl=True):
+    def __init__(self, base_url, verify_ssl=True, username=None, password=None):
         if not issubclass(self.resource, BaseResource):
             raise TypeError('modelstatus.BaseCollection.resource must be inherited from modelstatus.BaseResource')
-        self.session = requests.Session()
-        self.session.headers.update({'content-type': 'application/json'})
+        self.auth = (username, password)
         self.base_url = base_url
         self.verify_ssl = verify_ssl
+        self.session = requests.Session()
+        self.session.auth = self.auth
+        self.session.verify = self.verify_ssl
+        self.session.headers.update({'content-type': 'application/json'})
 
     def get_collection_url(self):
         """
@@ -116,14 +118,16 @@ class BaseCollection(object):
         Requests a single object from the collection.
         Returns an object inheriting from BaseResource.
         """
-        data = self._get_raw(id)
-        resource = self.resource
-        try:
-            object_ = resource(data)
-        except Exception, e:
-            raise modelstatus.exceptions.InvalidResourceException(e)
-        logging.info("Downloaded %s" % object_)
-        return object_
+        resource = self._get_raw(id)
+        return self._object_from_dictionary(resource)
+
+    def post(self, data):
+        """
+        Post a new object to the collection.
+        Returns an object inheriting from BaseResource.
+        """
+        resource = self._post_raw(data)
+        return self._object_from_dictionary(resource)
 
     def filter(self, **kwargs):
         """
@@ -131,30 +135,39 @@ class BaseCollection(object):
         Returns a list of resources inheriting from BaseResource.
         """
         data = self._filter_raw(kwargs)
-
-        resource = self.resource
-        try:
-            resources = [resource(x) for x in data]
-        except Exception, e:
-            raise modelstatus.exceptions.InvalidResourceException(e)
+        resources = [self._object_from_dictionary(x) for x in data]
         return resources
 
-    def _make_get_request(self, *args, **kwargs):
+    def _object_from_dictionary(self, dictionary):
+        resource = self.resource
+        try:
+            object_ = resource(dictionary)
+        except Exception, e:
+            raise modelstatus.exceptions.InvalidResourceException(e)
+        return object_
+
+    def _raise_response_exceptions(self, response):
+        if response.status_code < 400:
+            return
+        if response.status_code >= 500:
+            exception = modelstatus.exceptions.ServiceUnavailableException
+        elif response.status_code == 404:
+            exception = modelstatus.exceptions.NotFoundException
+        else:
+            exception = modelstatus.exceptions.ClientErrorException
+        raise exception(response.text)
+
+    def _do_request(self, method, *args, **kwargs):
         """
-        Wrapper for self.session.get with exception handling.
+        Wrapper for self.session.{get,post,patch,put,delete} with exception handling
         """
         try:
-            response = self.session.get(*args, **kwargs)
+            func = getattr(self.session, method)
+            response = func(*args, **kwargs)
         except requests.exceptions.ConnectionError, e:
             raise modelstatus.exceptions.ServiceUnavailableException("Could not connect: %s" % unicode(e))
 
-        if response.status_code >= 500:
-            raise modelstatus.exceptions.ServiceUnavailableException(
-                "Server returned error code %d for request uri %s " % (response.status_code, response.request.url))
-        elif response.status_code >= 400:
-            raise modelstatus.exceptions.ClientErrorException(
-                "Server returned error code %d for request %s " % (response.status_code, response.request.url))
-
+        self._raise_response_exceptions(response)
         return response
 
     def _get_response_data(self, response):
@@ -178,7 +191,7 @@ class BaseCollection(object):
         Returns a list of dictionaries containing the parsed JSON data.
         """
         url = self.get_collection_url()
-        response = self._make_get_request(url, params=params, verify=self.verify_ssl)
+        response = self._do_request('get', url, params=params, verify=self.verify_ssl)
         data = self._get_response_data(response)
         return self._unserialize(data)
 
@@ -188,7 +201,18 @@ class BaseCollection(object):
         Returns a dictionary containing the parsed JSON data.
         """
         url = self.get_resource_url(id)
-        response = self._make_get_request(url)
+        response = self._do_request('get', url)
+        data = self._get_response_data(response)
+        return self._unserialize(data)
+
+    def _post_raw(self, data):
+        """
+        Post a new object to the collection.
+        Returns a dictionary containing the result object.
+        """
+        url = self.get_collection_url()
+        payload = json.dumps(data)
+        response = self._do_request('post', url, data=payload)
         data = self._get_response_data(response)
         return self._unserialize(data)
 
