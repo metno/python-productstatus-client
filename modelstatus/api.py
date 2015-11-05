@@ -122,7 +122,8 @@ class Api(object):
             if not self._schema:
                 self._get_schema_from_server()
             if name not in self._schema.keys():
-                raise NameError("The resource '%s' is not supported by the Modelstatus server" % name)
+                raise modelstatus.exceptions.ResourceTypeNotFoundException(
+                    "The resource '%s' is not supported by the Modelstatus server" % name)
             self._resource_collection[name] = ResourceCollection(self, name)
         return self._resource_collection[name]
 
@@ -231,7 +232,10 @@ class Resource(object):
         """
         if not self._has_url():
             raise modelstatus.exceptions.ModelstatusException('Trying to get an object without a primary key')
-        self._data = self._api._get(self._url)
+        try:
+            self._data = self._api._get(self._url)
+        except modelstatus.exceptions.NotFoundException, e:
+            raise modelstatus.exceptions.ResourceNotFoundException(e)
         for member in self._data.keys():
             self._unserialize_member(member)
 
