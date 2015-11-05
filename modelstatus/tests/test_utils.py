@@ -23,3 +23,13 @@ class SerializeBaseTest(unittest.TestCase):
         dt = datetime.datetime.utcfromtimestamp(3661)
         with self.assertRaises(ValueError):
             self.class_._serialize_datetime(dt)
+
+
+class TestUtilsTest(unittest.TestCase):
+    def test_build_url(self):
+        url = modelstatus.utils.build_url('a', 'b', 'c')
+        self.assertEqual(url, 'a/b/c/')
+
+    def test_build_url_slash(self):
+        url = modelstatus.utils.build_url('/a', '/b/', 'c/')
+        self.assertEqual(url, 'a/b/c/')

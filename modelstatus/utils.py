@@ -2,6 +2,14 @@ import datetime
 import dateutil.tz
 
 
+def build_url(*args):
+    """
+    Join a list of strings into a slash-separated string, stripping any leading
+    slashes but including the trailing slash.
+    """
+    return '/'.join([x.strip('/') for x in args]) + '/'
+
+
 def get_utc_now():
     """
     Return a time-zone aware DateTime object with the current date and time
