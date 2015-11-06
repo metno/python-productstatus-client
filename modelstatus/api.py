@@ -1,4 +1,5 @@
 import requests
+import requests.auth
 import json
 import dateutil.parser
 
@@ -31,26 +32,17 @@ class Api(object):
         @param username Client API username.
         @param password Client API key.
         """
-        self._auth = (username, password)
         self._base_url = base_url
         self._url_prefix = '/api/v1/'
         self._url = modelstatus.utils.build_url(self._base_url, self._url_prefix)
         self._verify_ssl = verify_ssl
         self._session = requests.Session()
-        self._session.auth = self._auth
         self._session.verify = self._verify_ssl
         self._session.headers.update({'content-type': 'application/json'})
+        if username and password:
+            self._session.auth = TastypieApiKeyAuth(username, password)
         self._resource_collection = {}
         self._schema = {}
-
-    def _get(self, url):
-        """
-        Run a remote GET request on the server, and return JSON data converted
-        to a dictionary.
-        """
-        response = self._do_request('get', url)
-        data = self._get_response_data(response)
-        return self._unserialize(data)
 
     def _do_request(self, method, *args, **kwargs):
         """
@@ -60,8 +52,7 @@ class Api(object):
         Returns a response object.
         """
         try:
-            func = getattr(self._session, method)
-            response = func(*args, **kwargs)
+            response = self._session.request(method, *args, **kwargs)
         except requests.exceptions.ConnectionError, e:
             raise modelstatus.exceptions.ServiceUnavailableException("Could not connect: %s" % unicode(e))
 
@@ -70,8 +61,10 @@ class Api(object):
 
     def _get_response_data(self, response):
         """
-        Get contents from a response object.
+        Get unserialized contents from a response object.
         """
+        if response.content:
+            return self._unserialize(response.content)
         return response.content
 
     def _raise_response_exceptions(self, response):
@@ -101,7 +94,8 @@ class Api(object):
         """
         Retrieve a list of possible resource types from the server.
         """
-        self._schema = self._get(self._url)
+        response = self._do_request('get', self._url)
+        self._schema = self._get_response_data(response)
 
     def _validate_url_component(self, name):
         """
@@ -174,11 +168,19 @@ class ResourceCollection(object):
         self._schema_url = modelstatus.utils.build_url(self._url, 'schema')
         self._schema = {}
 
+    def create(self):
+        """
+        Create a new, temporary Resource object that might be saved, and thus
+        stored on the server.
+        """
+        return Resource(self._api, self, None)
+
     def _get_schema_from_server(self):
         """
         Retrieve from the server the data model schema for this resource type.
         """
-        self._schema = self._api._get(self._schema_url)
+        response = self._api._do_request('get', self._schema_url)
+        self._schema = self._api._get_response_data(response)
 
     def __getitem__(self, id):
         """
@@ -219,6 +221,17 @@ class Resource(object):
             self._url = None
         self._data = {}
 
+    def save(self):
+        """
+        Store the locally cached values on the server.
+        """
+        if self._has_url():
+            response = self._api._do_request('put', self._url, data=self._serialize())
+        else:
+            response = self._api._do_request('post', self._collection._url, data=self._serialize())
+            self._url = response.headers['Location']
+        self._data = {}  # invalidate local cache
+
     def _has_url(self):
         """
         Returns True if this Resource has an URL which can be accessed at the
@@ -233,11 +246,45 @@ class Resource(object):
         if not self._has_url():
             raise modelstatus.exceptions.ModelstatusException('Trying to get an object without a primary key')
         try:
-            self._data = self._api._get(self._url)
+            response = self._api._do_request('get', self._url)
+            self._data = self._api._get_response_data(response)
         except modelstatus.exceptions.NotFoundException, e:
             raise modelstatus.exceptions.ResourceNotFoundException(e)
         for member in self._data.keys():
             self._unserialize_member(member)
+
+    def _ensure_complete_object(self):
+        """
+        Fetch the resource from the API server if we have an URL and it is not
+        already cached.
+        """
+        if self._has_url() and not self._data:
+            self._get_resource_from_server()
+
+    def _serialize(self):
+        """
+        Return a JSON serialized representation of this resource.
+        """
+        self._ensure_complete_object()
+        data = {}
+        for key in self._data.keys():
+            data[key] = self._serialize_member(key)
+        return json.dumps(data)
+
+    def _serialize_member(self, name):
+        """
+        Serialize a resource variable into a string, integer, boolean, or null.
+        """
+        if self._data[name] is None:
+            return None
+
+        description = self._collection.schema['fields'][name]
+        type_ = description['type']
+        if type_ == 'datetime':
+            return self._data[name].strftime('%Y-%m-%dT%H:%M:%S%z')
+        elif type_ == 'related' and description['related_type'] == 'to_one':
+            return self._data[name].resource_uri
+        return self._data[name]
 
     def _unserialize_member(self, name):
         """
@@ -260,8 +307,42 @@ class Resource(object):
         Attribute accessor. Will load data from the server unless it is cached.
         Enables lazy loading of the resource.
         """
-        if not self._data:
-            self._get_resource_from_server()
-        if name not in self._data:
+        fields = self._collection.schema['fields']
+        if name not in fields:
             raise KeyError('Attribute does not exist: %s' % name)
+        self._ensure_complete_object()
+        if name not in self._data:
+            return None
         return self._data[name]
+
+    def __setattr__(self, name, value):
+        """
+        Attribute setter. Will store data cached locally until saved using save().
+        Will only allow setting variables that can be stored on the server, and
+        disallow changing read-only attributes.
+        """
+        if name[0] == '_':
+            return object.__setattr__(self, name, value)
+        fields = self._collection.schema['fields']
+        if name not in fields:
+            raise KeyError('Attribute does not exist: %s' % name)
+        if fields[name]['readonly']:
+            raise AttributeError('Attribute is read only: %s' % name)
+        # FIXME: more tests?
+        self._ensure_complete_object()
+        self._data[name] = value
+
+
+class TastypieApiKeyAuth(requests.auth.AuthBase):
+    """
+    Django Tastypie requires a special Authorization header format, which is
+    implemented by this class.
+    """
+
+    def __init__(self, username, api_key):
+        self.username = username
+        self.api_key = api_key
+
+    def __call__(self, request):
+        request.headers.update({'Authorization': 'ApiKey %s:%s' % (self.username, self.api_key)})
+        return request

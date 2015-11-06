@@ -1,11 +1,22 @@
 import unittest
 import httmock
 import datetime
+import json
 
 import modelstatus.api
 
 
 BASE_URL = 'http://255.255.255.255'
+
+
+foo_unserialized = {
+    "id": "66340f0b-2c2c-436d-a077-3d939f4f7283",
+    "created": "2015-01-01T00:00:00+0000",
+    "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
+    "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
+    "number": 1,
+    "text": "baz"
+}
 
 
 @httmock.all_requests
@@ -36,18 +47,22 @@ def req_schema(url, request):
     """
 
 
+@httmock.urlmatch(method='post', path=r'^/api/v1/foo/$')
+def req_post_foo_resource(url, request):
+    headers = {'Location': BASE_URL + '/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/'}
+    return httmock.response(201, {}, headers, None, 5, request)
+
+
+@httmock.urlmatch(method='put', path=r'^/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/$')
+def req_put_foo_resource(url, request):
+    return {
+        'status_code': 204
+    }
+
+
 @httmock.urlmatch(path=r'^/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/$')
 def req_foo_resource(url, request):
-    return """
-    {
-        "id": "66340f0b-2c2c-436d-a077-3d939f4f7283",
-        "created": "2015-01-01T00:00:00Z",
-        "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
-        "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
-        "number": 1,
-        "text": "baz"
-    }
-    """
+    return json.dumps(foo_unserialized)
 
 
 @httmock.urlmatch(path=r'^/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/$')
@@ -104,7 +119,7 @@ def req_foo_schema(url, request):
                 "unique": false
             },
             "number": {
-                "blank": false,
+                "blank": true,
                 "default": "No default provided.",
                 "help_text": "Integer data. Ex: 2673",
                 "nullable": false,
@@ -131,7 +146,7 @@ def req_foo_schema(url, request):
                 "unique": true
             },
             "bar": {
-                "blank": false,
+                "blank": true,
                 "default": "No default provided.",
                 "help_text": "A single related resource. Can be either a URI or set of nested resource data.",
                 "nullable": true,
@@ -184,6 +199,38 @@ class ExternalTest(unittest.TestCase):
             self.assertIsInstance(resource.bar, modelstatus.api.Resource)
             self.assertEqual(resource.text, "baz")
             self.assertEqual(resource.number, 1)
+
+    def test_post_resource(self):
+        """
+        Test that resource members can be created.
+        """
+        resource = self.api.foo.create()
+        with httmock.HTTMock(req_post_foo_resource, req_foo_resource, req_foo_schema):
+            self.assertIsNone(resource.id)
+            resource.text = 'baz'
+            resource.save()
+            self.assertEqual(resource.text, 'baz')
+
+    def test_put_resource(self):
+        """
+        Test that resource members can be updated.
+        """
+        resource = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
+        with httmock.HTTMock(req_put_foo_resource, req_foo_resource, req_bar_resource, req_foo_schema):
+            resource.text = 'baz'
+            resource.save()
+            self.assertEqual(resource.text, 'baz')
+
+    def test_serialize_resource(self):
+        """
+        Test that resources are properly serialized.
+        """
+        global foo_unserialized
+        resource = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
+        with httmock.HTTMock(req_put_foo_resource, req_foo_resource, req_bar_resource, req_foo_schema):
+            serialized = resource._serialize()
+            foo_serialized = json.dumps(foo_unserialized)
+            self.assertEqual(serialized, foo_serialized)
 
     def test_nonexistent_resource(self):
         """
