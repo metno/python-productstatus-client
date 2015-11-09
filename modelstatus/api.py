@@ -1,3 +1,4 @@
+import copy
 import requests
 import requests.auth
 import json
@@ -153,6 +154,113 @@ class Api(object):
                         index)
 
 
+class QuerySet(object):
+    """
+    The QuerySet class facilitates listing and filtering a resource collection.
+
+    Example usage:
+    --------------
+    qs = api.model_run.objects  # instantiates a QuerySet
+    qs.filter(model=api.model['66340f0b-2c2c-436d-a077-3d939f4f7283'], reference_time=datetime.datetime.now())
+    qs.order_by('-version')  # order by version field, descending
+    qs.limit(5)  # limit query to 5 results
+    qs.count()  # returns total matches, regardless of limit
+    qs[2]  # returns the 3rd element matching the criteria
+    """
+
+    def __init__(self, api, collection):
+        self._api = api
+        self._collection = collection
+        self._filters = {}
+        self._results = {}
+
+    def _relative_item_index(self, index):
+        """
+        Convert an item's absolute list position to the relative list position
+        in self._results['objects']. Returns None if the object is not locally cached.
+        """
+        if not self._results:
+            return None
+        offset = self._results['meta']['offset']
+        limit = self._results['meta']['limit']
+        if index < offset or index >= limit + offset:
+            return None
+        return index - offset
+
+    def filter(self, **kwargs):
+        """
+        Add a search constraint and return a reference to self.
+        """
+        self._results = {}
+        [self._add_filter(key, value) for key, value in kwargs.iteritems()]
+        return self
+
+    def all(self):
+        """
+        Deletes all search constraints and return a reference to self.
+        """
+        self._filters = {}
+        return self.filter()
+
+    def order_by(self, *args):
+        """
+        Apply list ordering. Sorted ascending by default. Prefix member names
+        with a minus sign to have descending order.
+        """
+        return self.filter(order_by=list(args))
+
+    def limit(self, limit):
+        """
+        Limit the number of results returned from the server.
+        """
+        return self.filter(limit=int(limit))
+
+    def execute(self):
+        """
+        Fetch results from the server.
+        """
+        response = self._api._do_request('get', self._collection._url, params=self._filters)
+        self._results = self._api._get_response_data(response)
+
+    def execute_if_empty(self):
+        """
+        Ensure there exists some search results.
+        """
+        if not self._results:
+            self.execute()
+
+    def count(self):
+        """
+        Return the number of results in the search query.
+        """
+        self.execute_if_empty()
+        return self._results['meta']['total_count']
+
+    def _add_filter(self, key, value):
+        """
+        Add a filter to the search query, serializing if neccessary.
+        """
+        if isinstance(value, modelstatus.api.Resource):
+            self._filters[key] = value.id
+        else:
+            self._filters[key] = value
+
+    def __getitem__(self, index):
+        """
+        Return the Resource of Nth index in the search results, running a
+        remote request if needs be.
+        """
+        relative_index = self._relative_item_index(index)
+        if relative_index is None or not self._results:
+            self.filter(offset=index)
+            self.execute()
+            relative_index = self._relative_item_index(index)
+        if relative_index is None:
+            raise IndexError('Out of range: %d' % index)
+        item = self._results['objects'][relative_index]
+        return Resource(self._api, self._collection, item['id'], item)
+
+
 class ResourceCollection(object):
     """
     The ResourceCollection class is used to retrieve resources from the REST
@@ -191,14 +299,22 @@ class ResourceCollection(object):
 
     def __getattr__(self, name):
         """
-        Schema accessor. Returns a dictionary with the schema for this
+        Schema or query set accessor.
+
+        Schema accessor returns a dictionary with the schema for this
         particular resource type. It is retrieved from the server unless it is
         locally cached.
+
+        The query set accessor returns an object which is used to return a list
+        of objects.
         """
         if name == 'schema':
             if not self._schema:
                 self._get_schema_from_server()
             return self._schema
+        elif name == 'objects':
+            return QuerySet(self._api, self)
+
         raise KeyError('Attribute does not exist: %s' % name)
 
 
@@ -211,7 +327,7 @@ class Resource(object):
     and foreign keys point to other Resource objects.
     """
 
-    def __init__(self, api, collection, id):
+    def __init__(self, api, collection, id, data={}):
         self._api = api
         self._collection = collection
         self._id = id
@@ -219,7 +335,8 @@ class Resource(object):
             self._url = modelstatus.utils.build_url(self._collection._url, self._id)
         else:
             self._url = None
-        self._data = {}
+        self._data = copy.copy(data)
+        self._unserialize()
 
     def save(self):
         """
@@ -250,8 +367,7 @@ class Resource(object):
             self._data = self._api._get_response_data(response)
         except modelstatus.exceptions.NotFoundException, e:
             raise modelstatus.exceptions.ResourceNotFoundException(e)
-        for member in self._data.keys():
-            self._unserialize_member(member)
+        self._unserialize()
 
     def _ensure_complete_object(self):
         """
@@ -285,6 +401,13 @@ class Resource(object):
         elif type_ == 'related' and description['related_type'] == 'to_one':
             return self._data[name].resource_uri
         return self._data[name]
+
+    def _unserialize(self):
+        """
+        Replace all string members with their proper types.
+        """
+        for member in self._data.keys():
+            self._unserialize_member(member)
 
     def _unserialize_member(self, name):
         """

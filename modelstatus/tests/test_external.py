@@ -65,6 +65,56 @@ def req_foo_resource(url, request):
     return json.dumps(foo_unserialized)
 
 
+@httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'foo=bar(&offset=0)?$')
+def req_filter_foo_resource(url, request):
+    return """
+    {
+        "meta": {
+            "limit": 1,
+            "next": null,
+            "offset": 0,
+            "previous": null,
+            "total_count": 2
+        },
+        "objects": [
+            {
+                "id": "66340f0b-2c2c-436d-a077-3d939f4f7283",
+                "created": "2015-01-01T10:00:00Z",
+                "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
+                "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
+                "number": 1,
+                "text": "baz"
+            }
+        ]
+    }
+    """
+
+
+@httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'foo=bar&offset=1?$')
+def req_filter_foo_resource_page2(url, request):
+    return """
+    {
+        "meta": {
+            "limit": 1,
+            "next": null,
+            "offset": 1,
+            "previous": null,
+            "total_count": 2
+        },
+        "objects": [
+            {
+                "id": "8a3c4389-8911-452e-b06b-dd7238c787a5",
+                "created": "2015-01-01T10:00:00Z",
+                "resource_uri": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
+                "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
+                "number": 5,
+                "text": "foo"
+            }
+        ]
+    }
+    """
+
+
 @httmock.urlmatch(path=r'^/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/$')
 def req_bar_resource(url, request):
     return """
@@ -260,3 +310,100 @@ class ExternalTest(unittest.TestCase):
         with httmock.HTTMock(req_foo_resource, req_bar_resource, req_foo_schema):
             bar = resource.bar
             self.assertEqual(bar.text, "baz")
+
+    def test_queryset(self):
+        """
+        Test that resource collections return a QuerySet when using objects().
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        self.assertIsInstance(qs, modelstatus.api.QuerySet)
+
+    def test_queryset_filter(self):
+        """
+        Test that resource collections can be filtered.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        qs.filter(foo='bar')
+        with httmock.HTTMock(req_filter_foo_resource, req_foo_schema):
+            resource = qs[0]
+            self.assertIsInstance(resource.created, datetime.datetime)
+            self.assertIsInstance(resource.bar, modelstatus.api.Resource)
+            self.assertEqual(resource.text, "baz")
+            self.assertEqual(resource.number, 1)
+
+    def test_queryset_filter_resource_object(self):
+        """
+        Test that filtering by resource objects resolves into a correct URL.
+        """
+        with httmock.HTTMock(req_schema, req_foo_schema, req_foo_resource):
+            qs = self.api.foo.objects
+            foo = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
+            qs.filter(foo=foo)
+        self.assertEqual(qs._filters['foo'], '66340f0b-2c2c-436d-a077-3d939f4f7283')
+
+    def test_queryset_filter_page2(self):
+        """
+        Test that resource collections can be filtered.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        qs.filter(foo='bar')
+        with httmock.HTTMock(req_filter_foo_resource_page2, req_foo_schema):
+            resource = qs[1]
+            self.assertIsInstance(resource.created, datetime.datetime)
+            self.assertIsInstance(resource.bar, modelstatus.api.Resource)
+            self.assertEqual(resource.text, "foo")
+            self.assertEqual(resource.number, 5)
+
+    def test_queryset_filter_walk(self):
+        """
+        Test that we can iterate through filter results.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        qs.filter(foo='bar')
+        with httmock.HTTMock(req_filter_foo_resource, req_filter_foo_resource_page2, req_foo_schema):
+            count = qs.count()
+            while count != 0:
+                count -= 1
+                resource = qs[count]
+                self.assertIsInstance(resource.created, datetime.datetime)
+
+    def test_queryset_count(self):
+        """
+        Test that resource collections are counted.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        qs.filter(foo='bar')
+        with httmock.HTTMock(req_filter_foo_resource):
+            self.assertEqual(qs.count(), 2)
+
+    def test_queryset_limit(self):
+        """
+        Test that resource collections can be constrained with a result limit.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        qs.limit(55)
+        self.assertEqual(qs._filters['limit'], 55)
+
+    def test_queryset_limit_int(self):
+        """
+        Test that limit() only accepts integers.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        with self.assertRaises(ValueError):
+            qs.limit('foo')
+
+    def test_queryset_order_by(self):
+        """
+        Test that querysets can be ordered.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        qs.order_by('-foo', 'bar')
+        self.assertEqual(qs._filters['order_by'], ['-foo', 'bar'])
