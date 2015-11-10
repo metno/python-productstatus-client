@@ -6,7 +6,7 @@ config = {
     'author': 'MET Norway',
     'url': 'https://github.com/metno/python-modelstatus-client',
     'download_url': 'https://github.com/metno/python-modelstatus-client',
-    'version': '1.1.0',
+    'version': '2.0.0',
     'install_requires': ['nose', 'requests', 'python-dateutil', 'httmock'],
     'packages': find_packages(),
     'scripts': [],
