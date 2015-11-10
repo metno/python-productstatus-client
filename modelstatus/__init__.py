@@ -1,7 +1,4 @@
 """
 The modelstatus Python module is an object-based HTTP REST interface to the
-Modelstatus service.
+Modelstatus service. Use the `Api` class in the `modelstatus.api` module.
 """
-
-from modelstatus.collections import *
-from modelstatus.resources import *

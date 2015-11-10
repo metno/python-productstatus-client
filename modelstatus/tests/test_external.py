@@ -4,6 +4,7 @@ import datetime
 import json
 
 import modelstatus.api
+import modelstatus.exceptions
 
 
 BASE_URL = 'http://255.255.255.255'

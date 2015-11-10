@@ -5,6 +5,7 @@ import json
 import dateutil.parser
 
 import modelstatus.utils
+import modelstatus.exceptions
 
 
 class Api(object):
@@ -24,24 +25,26 @@ class Api(object):
     print arome.grid_resolution
     """
 
-    def __init__(self, base_url, verify_ssl=True, username=None, password=None):
+    def __init__(self, base_url, verify_ssl=True, username=None, api_key=None, timeout=3):
         """
         Initialize the Api class.
 
         @param base_url The root URL where the Modelstatus server serves data.
         @param verify_ssl Whether or not to verify SSL certificates.
         @param username Client API username.
-        @param password Client API key.
+        @param api_key Client API key.
+        @param timeout Request timeout in seconds.
         """
         self._base_url = base_url
         self._url_prefix = '/api/v1/'
         self._url = modelstatus.utils.build_url(self._base_url, self._url_prefix)
         self._verify_ssl = verify_ssl
+        self._timeout = timeout
         self._session = requests.Session()
         self._session.verify = self._verify_ssl
         self._session.headers.update({'content-type': 'application/json'})
-        if username and password:
-            self._session.auth = TastypieApiKeyAuth(username, password)
+        if username and api_key:
+            self._session.auth = TastypieApiKeyAuth(username, api_key)
         self._resource_collection = {}
         self._schema = {}
 
@@ -52,6 +55,8 @@ class Api(object):
 
         Returns a response object.
         """
+        if 'timeout' not in kwargs:
+            kwargs['timeout'] = self._timeout
         try:
             response = self._session.request(method, *args, **kwargs)
         except requests.exceptions.ConnectionError, e:
