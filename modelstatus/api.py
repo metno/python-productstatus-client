@@ -81,6 +81,8 @@ class Api(object):
             return
         if response.status_code >= 500:
             exception = modelstatus.exceptions.ServiceUnavailableException
+        elif response.status_code == 401:
+            exception = modelstatus.exceptions.UnauthorizedException
         elif response.status_code == 404:
             exception = modelstatus.exceptions.NotFoundException
         else:

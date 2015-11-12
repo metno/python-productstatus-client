@@ -17,7 +17,14 @@ class ClientErrorException(ModelstatusException):
     pass
 
 
-class NotFoundException(ModelstatusException):
+class UnauthorizedException(ClientErrorException):
+    """
+    Thrown when the server returns 401.
+    """
+    pass
+
+
+class NotFoundException(ClientErrorException):
     """
     Thrown when the server returns 404.
     """
