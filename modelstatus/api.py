@@ -158,6 +158,12 @@ class Api(object):
         raise NameError('The URL %s in unsupported by this API instance; the URL contains too many components' %
                         index)
 
+    def __repr__(self):
+        """
+        Return a human-readable string representing this Api object.
+        """
+        return '<Modelstatus API at %s>' % self._url
+
 
 class QuerySet(object):
     """
@@ -265,6 +271,12 @@ class QuerySet(object):
         item = self._results['objects'][relative_index]
         return Resource(self._api, self._collection, item['id'], item)
 
+    def __repr__(self):
+        """
+        Return a human-readable string representing this query set.
+        """
+        return '<QuerySet on %s>' % self._collection._url
+
 
 class ResourceCollection(object):
     """
@@ -321,6 +333,12 @@ class ResourceCollection(object):
             return QuerySet(self._api, self)
 
         raise KeyError('Attribute does not exist: %s' % name)
+
+    def __repr__(self):
+        """
+        Return a human-readable string representing this resource collection object.
+        """
+        return '<%s ResourceCollection at %s>' % (self._resource_name, self._url)
 
 
 class Resource(object):
@@ -459,6 +477,14 @@ class Resource(object):
         # FIXME: more tests?
         self._ensure_complete_object()
         self._data[name] = value
+
+    def __repr__(self):
+        """
+        Return a human-readable string representing this resource object.
+        """
+        if self._has_url():
+            return '<Resource at %s>' % self.resource_uri
+        return '<non-persistent %s Resource>' % self._collection._resource_name
 
 
 class TastypieApiKeyAuth(requests.auth.AuthBase):
