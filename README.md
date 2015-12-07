@@ -164,3 +164,17 @@ $ python modelstatus/cli.py http://localhost:8000 model get 8efab026-434e-4baf-b
     "wdb_data_provider": "nordic_roms"
 }
 ```
+
+
+## Listening for Modelstatus message queue events
+
+The event listener is asynchronous, and will queue incoming messages until you fetch them with `get_next_event()`. TCP keepalive is enabled.
+
+```
+import modelstatus.event
+listener = modelstatus.event.Listener('tcp://hostname:port')
+while True:
+    message = listener.get_next_event()  # blocks until the next message is received
+    print message.resource     # it behaves as an object...
+    print message['resource']  # or a dictionary
+```
