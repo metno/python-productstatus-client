@@ -4,13 +4,13 @@ import requests.auth
 import json
 import dateutil.parser
 
-import modelstatus.utils
-import modelstatus.exceptions
+import productstatus.utils
+import productstatus.exceptions
 
 
 class Api(object):
     """
-    This class provides fluent access to the Modelstatus REST API. Resource
+    This class provides fluent access to the Productstatus REST API. Resource
     collections are exposed as members of the Api class, and specific resources
     can be retrieved by indexes.
 
@@ -20,8 +20,8 @@ class Api(object):
     Examples of use:
 
     api = Api('http://localhost:8000')
-    models = api.model
-    arome = models['66340f0b-2c2c-436d-a077-3d939f4f7283']
+    products = api.product
+    arome = products['66340f0b-2c2c-436d-a077-3d939f4f7283']
     print arome.grid_resolution
     """
 
@@ -29,7 +29,7 @@ class Api(object):
         """
         Initialize the Api class.
 
-        @param base_url The root URL where the Modelstatus server serves data.
+        @param base_url The root URL where the Productstatus server serves data.
         @param verify_ssl Whether or not to verify SSL certificates.
         @param username Client API username.
         @param api_key Client API key.
@@ -37,7 +37,7 @@ class Api(object):
         """
         self._base_url = base_url
         self._url_prefix = '/api/v1/'
-        self._url = modelstatus.utils.build_url(self._base_url, self._url_prefix)
+        self._url = productstatus.utils.build_url(self._base_url, self._url_prefix)
         self._verify_ssl = verify_ssl
         self._timeout = timeout
         self._session = requests.Session()
@@ -60,7 +60,7 @@ class Api(object):
         try:
             response = self._session.request(method, *args, **kwargs)
         except requests.exceptions.ConnectionError, e:
-            raise modelstatus.exceptions.ServiceUnavailableException("Could not connect: %s" % unicode(e))
+            raise productstatus.exceptions.ServiceUnavailableException("Could not connect: %s" % unicode(e))
 
         self._raise_response_exceptions(response)
         return response
@@ -80,13 +80,13 @@ class Api(object):
         if response.status_code < 400:
             return
         if response.status_code >= 500:
-            exception = modelstatus.exceptions.ServiceUnavailableException
+            exception = productstatus.exceptions.ServiceUnavailableException
         elif response.status_code == 401:
-            exception = modelstatus.exceptions.UnauthorizedException
+            exception = productstatus.exceptions.UnauthorizedException
         elif response.status_code == 404:
-            exception = modelstatus.exceptions.NotFoundException
+            exception = productstatus.exceptions.NotFoundException
         else:
-            exception = modelstatus.exceptions.ClientErrorException
+            exception = productstatus.exceptions.ClientErrorException
         raise exception(response.text)
 
     def _unserialize(self, data):
@@ -96,7 +96,7 @@ class Api(object):
         try:
             return json.loads(data)
         except ValueError, e:
-            raise modelstatus.exceptions.UnserializeException(e)
+            raise productstatus.exceptions.UnserializeException(e)
 
     def _get_schema_from_server(self):
         """
@@ -118,21 +118,21 @@ class Api(object):
     def __getattr__(self, name):
         """
         Return a ResourceCollection object which can be used to retrieve
-        resources. E.g. api.model_run will point to /api/v1/model_run/.
+        resources. E.g. api.productinstance will point to /api/v1/productinstance/.
         """
         if name not in self._resource_collection.keys():
             if not self._schema:
                 self._get_schema_from_server()
             if name not in self._schema.keys():
-                raise modelstatus.exceptions.ResourceTypeNotFoundException(
-                    "The resource '%s' is not supported by the Modelstatus server" % name)
+                raise productstatus.exceptions.ResourceTypeNotFoundException(
+                    "The resource '%s' is not supported by the Productstatus server" % name)
             self._resource_collection[name] = ResourceCollection(self, name)
         return self._resource_collection[name]
 
     def __getitem__(self, index):
         """
         Provide direct access to an API object. For instance, accessing
-        api['/api/v1/model/66340f0b-2c2c-436d-a077-3d939f4f7283/'] will return a
+        api['/api/v1/product/66340f0b-2c2c-436d-a077-3d939f4f7283/'] will return a
         Resource object.
         """
         prefix_length = len(self._url_prefix)
@@ -164,7 +164,7 @@ class Api(object):
         """
         Return a human-readable string representing this Api object.
         """
-        return '<Modelstatus API at %s>' % self._url
+        return '<Productstatus API at %s>' % self._url
 
 
 class QuerySet(object):
@@ -173,8 +173,8 @@ class QuerySet(object):
 
     Example usage:
     --------------
-    qs = api.model_run.objects  # instantiates a QuerySet
-    qs.filter(model=api.model['66340f0b-2c2c-436d-a077-3d939f4f7283'], reference_time=datetime.datetime.now())
+    qs = api.productinstance.objects  # instantiates a QuerySet
+    qs.filter(product=api.product['66340f0b-2c2c-436d-a077-3d939f4f7283'], reference_time=datetime.datetime.now())
     qs.order_by('-version')  # order by version field, descending
     qs.limit(5)  # limit query to 5 results
     qs.count()  # returns total matches, regardless of limit
@@ -253,7 +253,7 @@ class QuerySet(object):
         """
         Add a filter to the search query, serializing if neccessary.
         """
-        if isinstance(value, modelstatus.api.Resource):
+        if isinstance(value, productstatus.api.Resource):
             self._filters[key] = value.id
         else:
             self._filters[key] = value
@@ -291,8 +291,8 @@ class ResourceCollection(object):
     def __init__(self, api, resource_name):
         self._api = api
         self._resource_name = resource_name
-        self._url = modelstatus.utils.build_url(self._api._url, self._resource_name)
-        self._schema_url = modelstatus.utils.build_url(self._url, 'schema')
+        self._url = productstatus.utils.build_url(self._api._url, self._resource_name)
+        self._schema_url = productstatus.utils.build_url(self._url, 'schema')
         self._schema = {}
 
     def create(self):
@@ -357,7 +357,7 @@ class Resource(object):
         self._collection = collection
         self._id = id
         if self._id:
-            self._url = modelstatus.utils.build_url(self._collection._url, self._id)
+            self._url = productstatus.utils.build_url(self._collection._url, self._id)
         else:
             self._url = None
         self._data = copy.copy(data)
@@ -386,12 +386,12 @@ class Resource(object):
         Fetch the resource from the API server.
         """
         if not self._has_url():
-            raise modelstatus.exceptions.ModelstatusException('Trying to get an object without a primary key')
+            raise productstatus.exceptions.ProductstatusException('Trying to get an object without a primary key')
         try:
             response = self._api._do_request('get', self._url)
             self._data = self._api._get_response_data(response)
-        except modelstatus.exceptions.NotFoundException, e:
-            raise modelstatus.exceptions.ResourceNotFoundException(e)
+        except productstatus.exceptions.NotFoundException, e:
+            raise productstatus.exceptions.ResourceNotFoundException(e)
         self._unserialize()
 
     def _ensure_complete_object(self):

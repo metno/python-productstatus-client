@@ -2,12 +2,12 @@ import unittest
 import datetime
 import dateutil.tz
 
-import modelstatus.utils
+import productstatus.utils
 
 
 class SerializeBaseTest(unittest.TestCase):
     def setUp(self):
-        self.class_ = modelstatus.utils.SerializeBase()
+        self.class_ = productstatus.utils.SerializeBase()
 
     def test_serialize_datetime_utc(self):
         dt = datetime.datetime.utcfromtimestamp(3661).replace(tzinfo=dateutil.tz.tzutc())
@@ -27,9 +27,9 @@ class SerializeBaseTest(unittest.TestCase):
 
 class TestUtilsTest(unittest.TestCase):
     def test_build_url(self):
-        url = modelstatus.utils.build_url('a', 'b', 'c')
+        url = productstatus.utils.build_url('a', 'b', 'c')
         self.assertEqual(url, 'a/b/c/')
 
     def test_build_url_slash(self):
-        url = modelstatus.utils.build_url('/a', '/b/', 'c/')
+        url = productstatus.utils.build_url('/a', '/b/', 'c/')
         self.assertEqual(url, 'a/b/c/')

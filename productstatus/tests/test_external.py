@@ -3,8 +3,8 @@ import httmock
 import datetime
 import json
 
-import modelstatus.api
-import modelstatus.exceptions
+import productstatus.api
+import productstatus.exceptions
 
 
 BASE_URL = 'http://255.255.255.255'
@@ -215,7 +215,7 @@ def req_foo_schema(url, request):
 
 class ExternalTest(unittest.TestCase):
     def setUp(self):
-        self.api = modelstatus.api.Api(BASE_URL, verify_ssl=False)
+        self.api = productstatus.api.Api(BASE_URL, verify_ssl=False)
         with httmock.HTTMock(req_schema):
             self.api.foo  # download the schema and cache the 'foo' type
 
@@ -224,7 +224,7 @@ class ExternalTest(unittest.TestCase):
         Test that a resource collection object is generated when accessing it
         as a member of Api.
         """
-        self.assertIsInstance(self.api.foo, modelstatus.api.ResourceCollection)
+        self.assertIsInstance(self.api.foo, productstatus.api.ResourceCollection)
         self.assertEqual(self.api.foo._resource_name, 'foo')
         self.assertEqual(self.api.foo._url, BASE_URL + '/api/v1/foo/')
         self.assertEqual(self.api.foo._schema_url, BASE_URL + '/api/v1/foo/schema/')
@@ -232,9 +232,9 @@ class ExternalTest(unittest.TestCase):
     def test_nonexistent_resource_type(self):
         """
         Test that an exception is thrown when accessing a resource type that is
-        unsupported on the Modelstatus server.
+        unsupported on the Productstatus server.
         """
-        with self.assertRaises(modelstatus.exceptions.ResourceTypeNotFoundException):
+        with self.assertRaises(productstatus.exceptions.ResourceTypeNotFoundException):
             with httmock.HTTMock(req_schema):
                 self.api.bar  # try to download the non-existent schema for 'bar'
 
@@ -244,10 +244,10 @@ class ExternalTest(unittest.TestCase):
         proper Python types such as DateTime, int, etc.
         """
         resource = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
-        self.assertIsInstance(resource, modelstatus.api.Resource)
+        self.assertIsInstance(resource, productstatus.api.Resource)
         with httmock.HTTMock(req_foo_resource, req_foo_schema):
             self.assertIsInstance(resource.created, datetime.datetime)
-            self.assertIsInstance(resource.bar, modelstatus.api.Resource)
+            self.assertIsInstance(resource.bar, productstatus.api.Resource)
             self.assertEqual(resource.text, "baz")
             self.assertEqual(resource.number, 1)
 
@@ -289,7 +289,7 @@ class ExternalTest(unittest.TestCase):
         exist on the server.
         """
         resource = self.api.foo['bar']
-        with self.assertRaises(modelstatus.exceptions.ResourceNotFoundException):
+        with self.assertRaises(productstatus.exceptions.ResourceNotFoundException):
             with httmock.HTTMock(req_foo_schema, req_404):
                 resource.id
 
@@ -298,7 +298,7 @@ class ExternalTest(unittest.TestCase):
         Test that an exception is thrown when the server is unavailable.
         """
         resource = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
-        with self.assertRaises(modelstatus.exceptions.ServiceUnavailableException):
+        with self.assertRaises(productstatus.exceptions.ServiceUnavailableException):
             with httmock.HTTMock(req_foo_schema, req_500):
                 resource.id
 
@@ -318,7 +318,7 @@ class ExternalTest(unittest.TestCase):
         """
         with httmock.HTTMock(req_schema):
             qs = self.api.foo.objects
-        self.assertIsInstance(qs, modelstatus.api.QuerySet)
+        self.assertIsInstance(qs, productstatus.api.QuerySet)
 
     def test_queryset_filter(self):
         """
@@ -330,7 +330,7 @@ class ExternalTest(unittest.TestCase):
         with httmock.HTTMock(req_filter_foo_resource, req_foo_schema):
             resource = qs[0]
             self.assertIsInstance(resource.created, datetime.datetime)
-            self.assertIsInstance(resource.bar, modelstatus.api.Resource)
+            self.assertIsInstance(resource.bar, productstatus.api.Resource)
             self.assertEqual(resource.text, "baz")
             self.assertEqual(resource.number, 1)
 
@@ -354,7 +354,7 @@ class ExternalTest(unittest.TestCase):
         with httmock.HTTMock(req_filter_foo_resource_page2, req_foo_schema):
             resource = qs[1]
             self.assertIsInstance(resource.created, datetime.datetime)
-            self.assertIsInstance(resource.bar, modelstatus.api.Resource)
+            self.assertIsInstance(resource.bar, productstatus.api.Resource)
             self.assertEqual(resource.text, "foo")
             self.assertEqual(resource.number, 5)
 

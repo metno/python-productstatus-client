@@ -1,6 +1,6 @@
 """
-The modelstatus.event module is an interface to the ZeroMQ event publisher
-daemon running on a Modelstatus server.
+The productstatus.event module is an interface to the ZeroMQ event publisher
+daemon running on a Productstatus server.
 """
 
 import zmq
@@ -23,7 +23,7 @@ class Listener(object):
 
     def __init__(self, connection_string):
         """
-        Set up a connection to the Modelstatus server, with TCP keepalive enabled.
+        Set up a connection to the Productstatus server, with TCP keepalive enabled.
         """
         self.connection_string = connection_string
         self.context = zmq.Context(1)

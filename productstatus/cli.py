@@ -1,10 +1,10 @@
 """
-Command-line interface to the Modelstatus server.
+Command-line interface to the Productstatus server.
 """
 
 import json
 import argparse
-import modelstatus.api
+import productstatus.api
 
 
 class Client(object):
@@ -13,10 +13,10 @@ class Client(object):
 
     def setup_basic_parser(self):
         self.parser = argparse.ArgumentParser(add_help=False)
-        self.parser.add_argument('server', help='Modelstatus server to communicate with')
+        self.parser.add_argument('server', help='Productstatus server to communicate with')
         self.parser.add_argument('--help', required=False, action='store_true', help='Print help')
-        self.parser.add_argument('--username', required=False, help='Modelstatus user name')
-        self.parser.add_argument('--api_key', required=False, help='Modelstatus API key')
+        self.parser.add_argument('--username', required=False, help='Productstatus user name')
+        self.parser.add_argument('--api_key', required=False, help='Productstatus API key')
 
     def setup_preliminary_parser(self):
         self.setup_basic_parser()
@@ -25,7 +25,7 @@ class Client(object):
     def setup_sub_commands(self):
         self.setup_preliminary_parser()
         args = self.parser.parse_args()
-        self.api = modelstatus.api.Api(args.server, username=args.username, api_key=args.api_key)
+        self.api = productstatus.api.Api(args.server, username=args.username, api_key=args.api_key)
         self.api._get_schema_from_server()
         self.main_schema = self.api._schema
 

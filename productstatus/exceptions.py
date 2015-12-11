@@ -1,16 +1,16 @@
 """
-This module contains exception objects used in the Modelstatus client library.
+This module contains exception objects used in the Productstatus client library.
 """
 
 
-class ModelstatusException(Exception):
+class ProductstatusException(Exception):
     """
     Thrown when there is an error relating to getting data from the REST API.
     """
     pass
 
 
-class ClientErrorException(ModelstatusException):
+class ClientErrorException(ProductstatusException):
     """
     Thrown when the server returns a 4xx error.
     """
@@ -45,21 +45,21 @@ class ResourceNotFoundException(NotFoundException):
     pass
 
 
-class ServiceUnavailableException(ModelstatusException):
+class ServiceUnavailableException(ProductstatusException):
     """
     Thrown when the server returns a 5xx error.
     """
     pass
 
 
-class UnserializeException(ModelstatusException):
+class UnserializeException(ProductstatusException):
     """
     Thrown when the data from the REST API could not be decoded.
     """
     pass
 
 
-class InvalidResourceException(ModelstatusException):
+class InvalidResourceException(ProductstatusException):
     """
     Thrown when the server returns an invalid resource.
     """
