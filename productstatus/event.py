@@ -5,6 +5,8 @@ daemon running on a Productstatus server.
 
 import zmq
 
+import productstatus.exceptions
+
 
 class Message(dict):
     """
@@ -21,7 +23,7 @@ class Listener(object):
     the next event from the queue.
     """
 
-    def __init__(self, connection_string):
+    def __init__(self, connection_string, timeout=None):
         """
         Set up a connection to the Productstatus server, with TCP keepalive enabled.
         """
@@ -38,9 +40,15 @@ class Listener(object):
         self.socket.setsockopt(zmq.TCP_KEEPALIVE_CNT, 2)
         self.socket.connect(connection_string)
         self.socket.setsockopt_string(zmq.SUBSCRIBE, u'')
+        # set socket timeout
+        if timeout:
+            self.socket.setsockopt(zmq.RCVTIMEO, int(timeout))
 
     def get_next_event(self):
         """
         Block until a message is received, and return the message object.
         """
-        return Message(self.socket.recv_json())
+        try:
+            return Message(self.socket.recv_json())
+        except zmq.Again:
+            raise productstatus.exceptions.EventTimeoutException('No events available on socket, try again later')

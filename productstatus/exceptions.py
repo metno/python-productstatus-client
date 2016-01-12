@@ -65,3 +65,17 @@ class InvalidResourceException(ProductstatusException):
     """
     # FIXME: DEPRECATED
     pass
+
+
+class EventException(ProductstatusException):
+    """
+    Parent class for all exceptions related to Productstatus events.
+    """
+    pass
+
+
+class EventTimeoutException(EventException):
+    """
+    Thrown when an event is not available on the ZeroMQ socket, and a timeout was specified.
+    """
+    pass
