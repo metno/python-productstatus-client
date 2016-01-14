@@ -124,6 +124,9 @@ class Api(object):
             if not self._schema:
                 self._get_schema_from_server()
             if name not in self._schema.keys():
+                # ignore Python internal functions
+                if name[:2] == '__':
+                    raise AttributeError('Attribute %s not found' % name)
                 raise productstatus.exceptions.ResourceTypeNotFoundException(
                     "The resource '%s' is not supported by the Productstatus server" % name)
             self._resource_collection[name] = ResourceCollection(self, name)
@@ -334,7 +337,7 @@ class ResourceCollection(object):
         elif name == 'objects':
             return QuerySet(self._api, self)
 
-        raise KeyError('Attribute does not exist: %s' % name)
+        raise AttributeError('Attribute does not exist: %s' % name)
 
     def __repr__(self):
         """
@@ -457,7 +460,7 @@ class Resource(object):
         """
         fields = self._collection.schema['fields']
         if name not in fields:
-            raise KeyError('Attribute does not exist: %s' % name)
+            raise AttributeError('Attribute does not exist: %s' % name)
         self._ensure_complete_object()
         if name not in self._data:
             return None
