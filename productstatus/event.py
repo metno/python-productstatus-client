@@ -14,7 +14,9 @@ class Message(dict):
     """
 
     def __getattr__(self, name):
-        return self[name]
+        if name in self:
+            return self[name]
+        raise AttributeError('Attribute %s does not exist' % name)
 
 
 class Listener(object):
