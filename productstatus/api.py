@@ -2,6 +2,7 @@ import copy
 import requests
 import requests.auth
 import json
+import logging
 import dateutil.parser
 
 import productstatus.utils
@@ -304,6 +305,33 @@ class ResourceCollection(object):
         stored on the server.
         """
         return Resource(self._api, self, None)
+
+    def find_or_create(self, data, order_by=None):
+        """
+        Find or create a resource matching the given parameters in the
+        `data` variable. If none is found, created and save one.
+        @param data data to search for, or to set if nothing is found
+        @param order_by ordering
+        @returns a single Resource object.
+        """
+        # search for existing
+        qs = self.objects
+        qs.filter(**data)
+        if order_by:
+            qs.order_by(order_by)
+
+        # create if not found
+        if qs.count() == 0:
+            logging.info('No matching %s resource found, creating...' % self._resource_name)
+            resource = self.create()
+            [setattr(resource, key, value) for key, value in data.iteritems()]
+            resource.save()
+            logging.info('%s: resource created' % resource)
+        else:
+            resource = qs[0]
+            logging.info('%s: using existing resource' % resource)
+
+        return resource
 
     def _get_schema_from_server(self):
         """
