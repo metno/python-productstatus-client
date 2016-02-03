@@ -60,8 +60,10 @@ class Api(object):
             kwargs['timeout'] = self._timeout
         try:
             response = self._session.request(method, *args, **kwargs)
-        except requests.exceptions.ConnectionError, e:
-            raise productstatus.exceptions.ServiceUnavailableException("Could not connect: %s" % unicode(e))
+        except requests.exceptions.RequestException, e:
+            raise productstatus.exceptions.ServiceUnavailableException(
+                "Could not perform request: %s" % unicode(e)
+            )
 
         self._raise_response_exceptions(response)
         return response
