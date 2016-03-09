@@ -335,6 +335,21 @@ class ExternalTest(unittest.TestCase):
             self.assertEqual(resource.text, "baz")
             self.assertEqual(resource.number, 1)
 
+    def test_naive_timestamp_filter(self):
+        """
+        Test that timezone-naive datetime objects cannot be used for filtering.
+        """
+        with httmock.HTTMock(req_schema):
+            qs = self.api.foo.objects
+        dt = datetime.datetime(year=2016,
+                               month=1,
+                               day=15,
+                               hour=12,
+                               minute=13,
+                               second=37)
+        with self.assertRaises(productstatus.exceptions.InvalidFilterDataException):
+            qs.filter(created=dt)
+
     def test_query_normalize_utc(self):
         """
         Test that datetime objects used in filtering are sent as UTC.
@@ -347,9 +362,9 @@ class ExternalTest(unittest.TestCase):
                                hour=12,
                                minute=13,
                                second=37,
-                               tzinfo=dateutil.tz.gettz('-5:00'))
+                               tzinfo=dateutil.tz.gettz('GMT-05:00'))
         qs.filter(created=dt)
-        self.assertEqual(qs._filters['created'], '2016-01-15T07:13:37Z')
+        self.assertEqual(qs._filters['created'], '2016-01-15T17:13:37Z')
 
     def test_queryset_filter_resource_object(self):
         """
