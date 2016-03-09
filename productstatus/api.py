@@ -3,7 +3,9 @@ import requests
 import requests.auth
 import json
 import logging
+import datetime
 import dateutil.parser
+import dateutil.tz
 
 import productstatus.utils
 import productstatus.exceptions
@@ -261,6 +263,12 @@ class QuerySet(object):
         """
         if isinstance(value, productstatus.api.Resource):
             self._filters[key] = value.id
+        elif isinstance(value, datetime.datetime):
+            if not value.tzname():
+                raise productstatus.exceptions.InvalidFilterDataException(
+                    'Cannot use a naive timestamp for filtering'
+                )
+            self._filters[key] = value.astimezone(dateutil.tz.tzutc()).strftime('%Y-%m-%dT%H:%M:%SZ')
         else:
             self._filters[key] = value
 
