@@ -17,6 +17,13 @@ class InvalidFilterDataException(ProductstatusException):
     pass
 
 
+class InvalidFilterDataException(ProductstatusException):
+    """
+    Thrown when filter data for query sets are invalid.
+    """
+    pass
+
+
 class ClientErrorException(ProductstatusException):
     """
     Thrown when the server returns a 4xx error.
@@ -82,7 +89,9 @@ class EventException(ProductstatusException):
 
 
 class EventTimeoutException(EventException):
+    """!
+    @brief Thrown when an event is not available on the ZeroMQ socket, and a timeout was specified.
+    @deprecated This exception is not thrown from the client library anymore.
     """
-    Thrown when an event is not available on the ZeroMQ socket, and a timeout was specified.
-    """
-    pass
+    def __init__(self, *args, **kwargs):
+        raise RuntimeError('This exception is deprecated, do not use.')

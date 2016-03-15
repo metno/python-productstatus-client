@@ -1,16 +1,16 @@
-"""
-The productstatus.event module is an interface to the ZeroMQ event publisher
-daemon running on a Productstatus server.
+"""!
+The productstatus.event module is an interface to the Kafka distributed commit log
+where Productstatus server publishes its events
 """
 
-import zmq
-
-import productstatus.exceptions
+import kafka
+import json
+import uuid
 
 
 class Message(dict):
-    """
-    A ZeroMQ event message.
+    """!
+    @brief A Kafka event message.
     """
 
     def __getattr__(self, name):
@@ -20,37 +20,44 @@ class Message(dict):
 
 
 class Listener(object):
-    """
-    ZeroMQ event listener client that provides a simple interface for fetching
-    the next event from the queue.
+    """!
+    @brief Kafka event listener client that provides a simple interface for
+    fetching the next event from the queue.
     """
 
-    def __init__(self, connection_string, timeout=None):
+    def __init__(self, bootstrap_servers, topic='productstatus', timeout=None, client_id=None, group_id=None):
+        """!
+        @brief Set up a connection to the Kafka instance on Productstatus server
         """
-        Set up a connection to the Productstatus server, with TCP keepalive enabled.
-        """
-        self.connection_string = connection_string
-        self.context = zmq.Context(1)
-        self.socket = self.context.socket(zmq.SUB)
-        # enable TCP keepalive
-        self.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        # keepalive packet sent each N seconds
-        self.socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 60)
-        # keepalive packet sent each N seconds
-        self.socket.setsockopt(zmq.TCP_KEEPALIVE_INTVL, 60)
-        # number of missed packets to mark connection as dead
-        self.socket.setsockopt(zmq.TCP_KEEPALIVE_CNT, 2)
-        self.socket.connect(connection_string)
-        self.socket.setsockopt_string(zmq.SUBSCRIBE, u'')
-        # set socket timeout
-        if timeout:
-            self.socket.setsockopt(zmq.RCVTIMEO, int(timeout))
+
+        if not client_id:
+            client_id = unicode(uuid.uuid4())
+
+        if not group_id:
+            client_id = unicode(uuid.uuid4())
+
+        self.json_consumer = kafka.KafkaConsumer(topic,
+                                                 client_id=client_id,
+                                                 group_id=group_id,
+                                                 bootstrap_servers=bootstrap_servers,
+                                                 enable_auto_commit=False,
+                                                 request_timeout_ms=5000,
+                                                 value_deserializer=lambda m: json.loads(m.decode('utf-8')))
 
     def get_next_event(self):
+        """!
+        @brief Block until a message is received, and return the message object.
+        @returns a Message object.
         """
-        Block until a message is received, and return the message object.
+        return Message(self.json_consumer.next().value)
+
+    def save_position(self):
+        """!
+        @brief Store the client's position in the message queue.
+
+        When this function is used, Kafka will store the client's message queue
+        position. Thus, next time the client is run, it will resume from the
+        next message. To use this function properly, you must set `client_id`
+        and `group_id` when instantiating the Listener object.
         """
-        try:
-            return Message(self.socket.recv_json())
-        except zmq.Again:
-            raise productstatus.exceptions.EventTimeoutException('No events available on socket, try again later')
+        self.json_consumer.commit()

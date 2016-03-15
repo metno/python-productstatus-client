@@ -6,8 +6,14 @@ config = {
     'author': 'MET Norway',
     'url': 'https://github.com/metno/python-productstatus-client',
     'download_url': 'https://github.com/metno/python-productstatus-client',
-    'version': '3.1.5',
-    'install_requires': ['nose', 'requests', 'python-dateutil', 'httmock', 'pyzmq'],
+    'version': '4.0.0',
+    'install_requires': [
+        'nose==1.3.7',
+        'requests==2.9.1',
+        'python-dateutil==2.5.0',
+        'httmock==1.2.4',
+        'kafka-python==1.0.2',
+    ],
     'packages': find_packages(),
     'scripts': [],
 }
