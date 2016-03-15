@@ -25,7 +25,7 @@ class Listener(object):
     fetching the next event from the queue.
     """
 
-    def __init__(self, bootstrap_servers, topic='productstatus', timeout=None, client_id=None, group_id=None):
+    def __init__(self, bootstrap_servers, topic='productstatus', timeout=5000, client_id=None, group_id=None):
         """!
         @brief Set up a connection to the Kafka instance on Productstatus server
         """
@@ -34,14 +34,14 @@ class Listener(object):
             client_id = unicode(uuid.uuid4())
 
         if not group_id:
-            client_id = unicode(uuid.uuid4())
+            group_id = unicode(uuid.uuid4())
 
         self.json_consumer = kafka.KafkaConsumer(topic,
                                                  client_id=client_id,
                                                  group_id=group_id,
                                                  bootstrap_servers=bootstrap_servers,
                                                  enable_auto_commit=False,
-                                                 request_timeout_ms=5000,
+                                                 request_timeout_ms=timeout,
                                                  value_deserializer=lambda m: json.loads(m.decode('utf-8')))
 
     def get_next_event(self):

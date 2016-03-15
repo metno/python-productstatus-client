@@ -9,6 +9,7 @@ import dateutil.tz
 
 import productstatus.utils
 import productstatus.exceptions
+import productstatus.event
 
 
 class Api(object):
@@ -46,10 +47,25 @@ class Api(object):
         self._session = requests.Session()
         self._session.verify = self._verify_ssl
         self._session.headers.update({'content-type': 'application/json'})
+        self._event_listener = None
         if username and api_key:
             self._session.auth = TastypieApiKeyAuth(username, api_key)
         self._resource_collection = {}
         self._schema = {}
+
+    def get_event_listener(self, client_id=None, group_id=None):
+        """!
+        @brief Instantiate a message delivery object of type with configuration
+        retrieved from the Productstatus server.
+        @returns A productstatus.event.Listener object.
+        """
+        if not self._event_listener:
+            configuration = self.kafka['default']
+            self._event_listener = productstatus.event.Listener(configuration.brokers,
+                                                                topic=configuration.topic,
+                                                                client_id=client_id,
+                                                                group_id=group_id)
+        return self._event_listener
 
     def _do_request(self, method, *args, **kwargs):
         """
