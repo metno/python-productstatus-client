@@ -53,7 +53,7 @@ class Api(object):
         self._resource_collection = {}
         self._schema = {}
 
-    def get_event_listener(self, client_id=None, group_id=None):
+    def get_event_listener(self, **kwargs):
         """!
         @brief Instantiate a message delivery object of type with configuration
         retrieved from the Productstatus server.
@@ -61,10 +61,8 @@ class Api(object):
         """
         if not self._event_listener:
             configuration = self.kafka['default']
-            self._event_listener = productstatus.event.Listener(configuration.brokers,
-                                                                topic=configuration.topic,
-                                                                client_id=client_id,
-                                                                group_id=group_id)
+            kwargs['bootstrap_servers'] = configuration.brokers
+            self._event_listener = productstatus.event.Listener(str(configuration.topic), **kwargs)
         return self._event_listener
 
     def _do_request(self, method, *args, **kwargs):

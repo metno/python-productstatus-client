@@ -7,6 +7,12 @@ import kafka
 import json
 import uuid
 
+import productstatus.exceptions
+
+
+def unserialize(message):
+    return json.loads(message.decode('utf-8'))
+
 
 class Message(dict):
     """!
@@ -25,31 +31,34 @@ class Listener(object):
     fetching the next event from the queue.
     """
 
-    def __init__(self, bootstrap_servers, topic='productstatus', timeout=5000, client_id=None, group_id=None):
+    def __init__(self, *args, **kwargs):
         """!
-        @brief Set up a connection to the Kafka instance on Productstatus server
+        @brief Set up a connection to the Kafka instance on Productstatus server.
+
+        Takes the same parameters as the KafkaConsumer() constructor. Client
+        and group UUIDs will be auto-generated if not specified.
         """
 
-        if not client_id:
-            client_id = unicode(uuid.uuid4())
+        if 'client_id' not in kwargs or not kwargs['client_id']:
+            kwargs['client_id'] = unicode(uuid.uuid4())
 
-        if not group_id:
-            group_id = unicode(uuid.uuid4())
+        if 'group_id' not in kwargs or not kwargs['group_id']:
+            kwargs['group_id'] = unicode(uuid.uuid4())
 
-        self.json_consumer = kafka.KafkaConsumer(topic,
-                                                 client_id=client_id,
-                                                 group_id=group_id,
-                                                 bootstrap_servers=bootstrap_servers,
-                                                 enable_auto_commit=False,
-                                                 request_timeout_ms=timeout,
-                                                 value_deserializer=lambda m: json.loads(m.decode('utf-8')))
+        kwargs['enable_auto_commit'] = False
+        kwargs['value_deserializer'] = unserialize
+
+        self.json_consumer = kafka.KafkaConsumer(*args, **kwargs)
 
     def get_next_event(self):
         """!
         @brief Block until a message is received, and return the message object.
         @returns a Message object.
         """
-        return Message(self.json_consumer.next().value)
+        try:
+            return Message(self.json_consumer.next().value)
+        except StopIteration:
+            raise productstatus.exceptions.EventTimeoutException('Timeout while waiting for next event')
 
     def save_position(self):
         """!
@@ -61,3 +70,12 @@ class Listener(object):
         and `group_id` when instantiating the Listener object.
         """
         self.json_consumer.commit()
+
+    def subscribe(self, topic):
+        """!
+        @brief Subscribe to an extra topic.
+        """
+        topics = self.json_consumer.topics()
+        topics.add(topic)
+        topics.remove('__consumer_offsets')
+        self.json_consumer.subscribe(topics)

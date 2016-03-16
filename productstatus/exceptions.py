@@ -90,8 +90,6 @@ class EventException(ProductstatusException):
 
 class EventTimeoutException(EventException):
     """!
-    @brief Thrown when an event is not available on the ZeroMQ socket, and a timeout was specified.
-    @deprecated This exception is not thrown from the client library anymore.
+    @brief Thrown when an event is not available on the Kafka socket.
     """
-    def __init__(self, *args, **kwargs):
-        raise RuntimeError('This exception is deprecated, do not use.')
+    pass
