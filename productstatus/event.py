@@ -48,11 +48,15 @@ class Listener(object):
         kwargs['enable_auto_commit'] = False
         kwargs['value_deserializer'] = unserialize
 
+        self.client_id = kwargs['client_id']
+        self.group_id = kwargs['group_id']
+
         self.json_consumer = kafka.KafkaConsumer(*args, **kwargs)
 
     def get_next_event(self):
         """!
-        @brief Block until a message is received, and return the message object.
+        @brief Block until a message is received, or a timeout is reached, and
+        return the message object. Raises an exception if a timeout is reached.
         @returns a Message object.
         """
         try:
@@ -70,12 +74,3 @@ class Listener(object):
         and `group_id` when instantiating the Listener object.
         """
         self.json_consumer.commit()
-
-    def subscribe(self, topic):
-        """!
-        @brief Subscribe to an extra topic.
-        """
-        topics = self.json_consumer.topics()
-        topics.add(topic)
-        topics.remove('__consumer_offsets')
-        self.json_consumer.subscribe(topics)
