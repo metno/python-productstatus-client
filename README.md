@@ -97,7 +97,7 @@ $ python productstatus/cli.py \
     --username X \
     --api_key Y \
     http://localhost:8000 \
-    service_backend create \
+    servicebackend create \
     --name /dev/null \
     --documentation_url 'https://example.com'
 {
@@ -106,7 +106,7 @@ $ python productstatus/cli.py \
     "id": "013f06f9-8cf3-4123-94b1-4206b2807cbd",
     "modified": "2015-11-10T17:35:17+0000",
     "name": "/dev/null",
-    "resource_uri": "/api/v1/service_backend/013f06f9-8cf3-4123-94b1-4206b2807cbd/"
+    "resource_uri": "/api/v1/servicebackend/013f06f9-8cf3-4123-94b1-4206b2807cbd/"
 }
 ```
 
@@ -161,6 +161,8 @@ $ python productstatus/cli.py http://localhost:8000 product get 8efab026-434e-4b
 }
 ```
 
+### Exit codes
+See cli.py code for the mapping between exceptions and various exit codes.
 
 ## Listening for Productstatus message queue events
 
