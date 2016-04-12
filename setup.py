@@ -6,7 +6,7 @@ config = {
     'author': 'MET Norway',
     'url': 'https://github.com/metno/python-productstatus-client',
     'download_url': 'https://github.com/metno/python-productstatus-client',
-    'version': '5.0.1',
+    'version': '5.0.2',
     'install_requires': [
         'nose==1.3.7',
         'requests==2.9.1',

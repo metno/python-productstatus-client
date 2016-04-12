@@ -12,6 +12,11 @@ import productstatus.exceptions
 import productstatus.event
 
 
+SERVICE_UNAVAILABLE_EXCEPTIONS = (requests.exceptions.RequestException,
+                                  requests.exceptions.Timeout,
+                                  )
+
+
 class Api(object):
     """
     This class provides fluent access to the Productstatus REST API. Resource
@@ -82,7 +87,7 @@ class Api(object):
             kwargs['timeout'] = self._timeout
         try:
             response = self._session.request(method, *args, **kwargs)
-        except requests.exceptions.RequestException, e:
+        except SERVICE_UNAVAILABLE_EXCEPTIONS, e:
             raise productstatus.exceptions.ServiceUnavailableException(
                 "Could not perform request: %s" % unicode(e)
             )
