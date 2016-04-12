@@ -437,7 +437,7 @@ class Resource(object):
             response = self._api._do_request('put', self._url, data=self._serialize())
         else:
             response = self._api._do_request('post', self._collection._url, data=self._serialize())
-            self._url = response.headers['Location']
+            self._url = productstatus.utils.build_url(self._api._base_url, response.headers['Location'])
         self._data = {}  # invalidate local cache
 
     def _has_url(self):
