@@ -9,10 +9,12 @@ import productstatus.exceptions
 
 
 BASE_URL = 'http://255.255.255.255'
+BLANK_UUID = '00000000-0000-0000-0000-000000000000'
 
 
 foo_unserialized = {
     "id": "66340f0b-2c2c-436d-a077-3d939f4f7283",
+    "slug": "bar",
     "created": "2015-01-01T00:00:00+0000",
     "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
     "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
@@ -51,7 +53,7 @@ def req_schema(url, request):
 
 @httmock.urlmatch(method='post', path=r'^/api/v1/foo/$')
 def req_post_foo_resource(url, request):
-    headers = {'Location': BASE_URL + '/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/'}
+    headers = {'Location': '/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/'}
     return httmock.response(201, {}, headers, None, 5, request)
 
 
@@ -81,6 +83,7 @@ def req_filter_foo_resource(url, request):
         "objects": [
             {
                 "id": "66340f0b-2c2c-436d-a077-3d939f4f7283",
+                "slug": "bar",
                 "created": "2015-01-01T10:00:00Z",
                 "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
                 "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
@@ -88,6 +91,48 @@ def req_filter_foo_resource(url, request):
                 "text": "baz"
             }
         ]
+    }
+    """
+
+
+@httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'slug=bar$')
+def req_search_foo_slug_resource(url, request):
+    return """
+    {
+        "meta": {
+            "limit": 1,
+            "next": null,
+            "offset": 0,
+            "previous": null,
+            "total_count": 1
+        },
+        "objects": [
+            {
+                "id": "66340f0b-2c2c-436d-a077-3d939f4f7283",
+                "slug": "bar",
+                "created": "2015-01-01T10:00:00Z",
+                "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
+                "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
+                "number": 1,
+                "text": "baz"
+            }
+        ]
+    }
+    """
+
+
+@httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'slug=notfound$')
+def req_search_foo_slug_resource_no_results(url, request):
+    return """
+    {
+        "meta": {
+            "limit": 1,
+            "next": null,
+            "offset": 0,
+            "previous": null,
+            "total_count": 0
+        },
+        "objects": []
     }
     """
 
@@ -106,6 +151,7 @@ def req_filter_foo_resource_page2(url, request):
         "objects": [
             {
                 "id": "8a3c4389-8911-452e-b06b-dd7238c787a5",
+                "slug": "bar",
                 "created": "2015-01-01T10:00:00Z",
                 "resource_uri": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
                 "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
@@ -122,6 +168,7 @@ def req_bar_resource(url, request):
     return """
     {
         "id": "8a3c4389-8911-452e-b06b-dd7238c787a5",
+        "slug": "baz",
         "created": "2015-01-01T10:00:00Z",
         "resource_uri": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
         "bar": null,
@@ -188,6 +235,17 @@ def req_foo_schema(url, request):
                 "type": "datetime",
                 "unique": false
             },
+            "slug": {
+                "blank": false,
+                "default": "slugify",
+                "help_text": "Unicode string data. Ex: \\"Hello World\\"",
+                "nullable": false,
+                "primary_key": false,
+                "readonly": false,
+                "type": "string",
+                "unique": true,
+                "verbose_name": "slug"
+            },
             "text": {
                 "blank": false,
                 "default": "No default provided.",
@@ -252,6 +310,22 @@ class ExternalTest(unittest.TestCase):
             self.assertEqual(resource.text, "baz")
             self.assertEqual(resource.number, 1)
 
+    def test_resource_slug(self):
+        """!
+        @brief Test that resources can be accessed using their slug.
+        """
+        with httmock.HTTMock(req_search_foo_slug_resource, req_foo_schema):
+            resource = self.api.foo['bar']
+            self.assertIsInstance(resource, productstatus.api.Resource)
+
+    def test_nonexistant_resource_slug(self):
+        """!
+        @brief Test that non-existant resources accessed using their slug throws a 404 error.
+        """
+        with httmock.HTTMock(req_search_foo_slug_resource_no_results, req_foo_schema):
+            with self.assertRaises(productstatus.exceptions.ResourceNotFoundException):
+                resource = self.api.foo['notfound']
+
     def test_post_resource(self):
         """
         Test that resource members can be created.
@@ -289,7 +363,7 @@ class ExternalTest(unittest.TestCase):
         Test that an exception is thrown when accessing an object that does not
         exist on the server.
         """
-        resource = self.api.foo['bar']
+        resource = self.api.foo[BLANK_UUID]
         with self.assertRaises(productstatus.exceptions.ResourceNotFoundException):
             with httmock.HTTMock(req_foo_schema, req_404):
                 resource.id

@@ -1,3 +1,4 @@
+import uuid
 import copy
 import requests
 import requests.auth
@@ -378,9 +379,22 @@ class ResourceCollection(object):
     def __getitem__(self, id):
         """
         Resource accessor. Will create and return a Resource instance pointing
-        to a specific resource.
+        to a specific resource. Tries to create the object using an UUID, and
+        when that fails, falls back to looking up the item by its slug attribute.
         """
-        return Resource(self._api, self, id)
+        try:
+            uuid_ = uuid.UUID(id)
+            return Resource(self._api, self, id)
+        except ValueError:
+            qs = self.objects.filter(slug=id)
+            if qs.count() == 0:
+                raise productstatus.exceptions.ResourceNotFoundException(
+                    '%s resource with slug "%s" not found.' % (
+                        self._resource_name,
+                        id,
+                    )
+                )
+            return qs[0]
 
     def __getattr__(self, name):
         """
