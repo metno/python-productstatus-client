@@ -88,9 +88,9 @@ class Api(object):
             kwargs['timeout'] = self._timeout
         try:
             response = self._session.request(method, *args, **kwargs)
-        except SERVICE_UNAVAILABLE_EXCEPTIONS, e:
+        except SERVICE_UNAVAILABLE_EXCEPTIONS as e:
             raise productstatus.exceptions.ServiceUnavailableException(
-                "Could not perform request: %s" % unicode(e)
+                "Could not perform request: %s" % str(e)
             )
 
         self._raise_response_exceptions(response)
@@ -125,8 +125,8 @@ class Api(object):
         Convert JSON encoded data into a dictionary.
         """
         try:
-            return json.loads(data)
-        except ValueError, e:
+            return json.loads(data.decode('UTF-8'))
+        except ValueError as e:
             raise productstatus.exceptions.UnserializeException(e)
 
     def _get_schema_from_server(self):
@@ -239,7 +239,7 @@ class QuerySet(object):
         Add a search constraint and return a reference to self.
         """
         self._results = {}
-        [self._add_filter(key, value) for key, value in kwargs.iteritems()]
+        [self._add_filter(key, value) for key, value in kwargs.items()]
         return self
 
     def all(self):
@@ -360,7 +360,7 @@ class ResourceCollection(object):
         if qs.count() == 0:
             logging.info('No matching %s resource found, creating...' % self._resource_name)
             resource = self.create()
-            [setattr(resource, key, value) for key, value in data.iteritems()]
+            [setattr(resource, key, value) for key, value in data.items()]
             resource.save()
             logging.info('%s: resource created' % resource)
         else:
@@ -470,7 +470,7 @@ class Resource(object):
         try:
             response = self._api._do_request('get', self._url)
             self._data = self._api._get_response_data(response)
-        except productstatus.exceptions.NotFoundException, e:
+        except productstatus.exceptions.NotFoundException as e:
             raise productstatus.exceptions.ResourceNotFoundException(e)
         self._unserialize()
 

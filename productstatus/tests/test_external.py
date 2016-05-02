@@ -8,7 +8,7 @@ import productstatus.api
 import productstatus.exceptions
 
 
-BASE_URL = 'http://255.255.255.255'
+BASE_URL = 'http://192.168.254.254'
 BLANK_UUID = '00000000-0000-0000-0000-000000000000'
 
 
@@ -27,7 +27,7 @@ foo_unserialized = {
 def req_404(url, request):
     return {
         'status_code': 404,
-        'content': 'Not found'
+        'content': b'Not found'
     }
 
 
@@ -35,13 +35,13 @@ def req_404(url, request):
 def req_500(url, request):
     return {
         'status_code': 500,
-        'content': 'Internal server error'
+        'content': b'Internal server error'
     }
 
 
 @httmock.urlmatch(path=r'^/api/v1/$')
 def req_schema(url, request):
-    return """
+    return b"""
     {
         "foo": {
             "list_endpoint": "/api/v1/foo/",
@@ -66,12 +66,12 @@ def req_put_foo_resource(url, request):
 
 @httmock.urlmatch(path=r'^/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/$')
 def req_foo_resource(url, request):
-    return json.dumps(foo_unserialized)
+    return bytes(json.dumps(foo_unserialized).encode('UTF-8'))
 
 
 @httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'foo=bar(&offset=0)?$')
 def req_filter_foo_resource(url, request):
-    return """
+    return b"""
     {
         "meta": {
             "limit": 1,
@@ -97,7 +97,7 @@ def req_filter_foo_resource(url, request):
 
 @httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'slug=bar$')
 def req_search_foo_slug_resource(url, request):
-    return """
+    return b"""
     {
         "meta": {
             "limit": 1,
@@ -123,7 +123,7 @@ def req_search_foo_slug_resource(url, request):
 
 @httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'slug=notfound$')
 def req_search_foo_slug_resource_no_results(url, request):
-    return """
+    return b"""
     {
         "meta": {
             "limit": 1,
@@ -139,7 +139,7 @@ def req_search_foo_slug_resource_no_results(url, request):
 
 @httmock.urlmatch(path=r'^/api/v1/foo/$', query=r'foo=bar&offset=1?$')
 def req_filter_foo_resource_page2(url, request):
-    return """
+    return b"""
     {
         "meta": {
             "limit": 1,
@@ -165,7 +165,7 @@ def req_filter_foo_resource_page2(url, request):
 
 @httmock.urlmatch(path=r'^/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/$')
 def req_bar_resource(url, request):
-    return """
+    return b"""
     {
         "id": "8a3c4389-8911-452e-b06b-dd7238c787a5",
         "slug": "baz",
@@ -180,7 +180,7 @@ def req_bar_resource(url, request):
 
 @httmock.urlmatch(path=r'^/api/v1/foo/schema/$')
 def req_foo_schema(url, request):
-    return """
+    return b"""
     {
         "allowed_detail_http_methods": [
             "get",
