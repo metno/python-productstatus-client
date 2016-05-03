@@ -67,13 +67,15 @@ class Api(object):
 
     def get_event_listener(self, **kwargs):
         """!
-        @brief Instantiate a message delivery object of type with configuration
+        @brief Instantiate a message delivery object with configuration
         retrieved from the Productstatus server.
         @returns A productstatus.event.Listener object.
         """
         if not self._event_listener:
             configuration = self.get_event_listener_configuration()
             kwargs['bootstrap_servers'] = configuration.brokers
+            kwargs['ssl'] = configuration.ssl
+            kwargs['ssl_verify'] = configuration.ssl_verify
             self._event_listener = productstatus.event.Listener(str(configuration.topic), **kwargs)
         return self._event_listener
 

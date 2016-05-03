@@ -3,6 +3,8 @@ The productstatus.event module is an interface to the Kafka distributed commit l
 where Productstatus server publishes its events
 """
 
+import logging
+import ssl
 import kafka
 import json
 import uuid
@@ -31,7 +33,7 @@ class Listener(object):
     fetching the next event from the queue.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, ssl=False, ssl_verify=True, **kwargs):
         """!
         @brief Set up a connection to the Kafka instance on Productstatus server.
 
@@ -40,10 +42,10 @@ class Listener(object):
         """
 
         if 'client_id' not in kwargs or not kwargs['client_id']:
-            kwargs['client_id'] = unicode(uuid.uuid4())
+            kwargs['client_id'] = str(uuid.uuid4())
 
         if 'group_id' not in kwargs or not kwargs['group_id']:
-            kwargs['group_id'] = unicode(uuid.uuid4())
+            kwargs['group_id'] = str(uuid.uuid4())
 
         kwargs['enable_auto_commit'] = False
         kwargs['value_deserializer'] = unserialize
@@ -51,7 +53,19 @@ class Listener(object):
         self.client_id = kwargs['client_id']
         self.group_id = kwargs['group_id']
 
+        # Handle SSL parameters
+        if ssl:
+            kwargs['security_protocol'] = 'SSL'
+            kwargs['ssl_context'] = Listener.create_security_context(ssl_verify)
+
         self.json_consumer = kafka.KafkaConsumer(*args, **kwargs)
+
+    @staticmethod
+    def create_security_context(verify_ssl=True):
+        ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
+        if not verify_ssl:
+            ctx.verify_mode = ssl.CERT_NONE
+        return ctx
 
     def get_next_event(self):
         """!
@@ -60,9 +74,11 @@ class Listener(object):
         @returns a Message object.
         """
         try:
-            return Message(self.json_consumer.next().value)
+            for message in self.json_consumer:
+                return Message(message.value)
         except StopIteration:
-            raise productstatus.exceptions.EventTimeoutException('Timeout while waiting for next event')
+            pass
+        raise productstatus.exceptions.EventTimeoutException('Timeout while waiting for next event')
 
     def save_position(self):
         """!
