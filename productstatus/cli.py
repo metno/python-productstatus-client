@@ -130,7 +130,7 @@ class Client(object):
         args_dict = vars(args)
         # This very filthy filter ensures that remote filter extensions are
         # applied magically, at the cost of breaking local syntax checking.
-        for i in xrange(0, len(unknown), 2):
+        for i in range(0, len(unknown), 2):
             args_dict[unknown[i].strip('--')] = unknown[i+1]
         if args.help:
             self.parser.print_help()
