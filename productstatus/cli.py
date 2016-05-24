@@ -78,7 +78,7 @@ class Client(object):
     def exec_create(self, args_dict):
         args = self.args_in_schema(args_dict)
         resource = self.collection.create()
-        [setattr(resource, key, value) for key, value in args.iteritems()]
+        [setattr(resource, key, value) for key, value in args.items()]
         resource._unserialize()
         resource.save()
         serialized = resource._serialize()
@@ -95,7 +95,7 @@ class Client(object):
             self.subparsers[action] = self.subparser.add_parser(action)
             self.subparsers[action].set_defaults(func=getattr(self, 'exec_%s' % action))
         for action in ['search', 'create']:
-            for key, value in self.schema['fields'].iteritems():
+            for key, value in self.schema['fields'].items():
                 self.subparsers[action].add_argument('--%s' % key, help=value['help_text'])
         for action in ['get']:
             self.subparsers[action].add_argument('uuid', help='The UUID of a %s object' % subcommand)
