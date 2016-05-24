@@ -32,7 +32,7 @@ class Api(object):
     api = Api('http://localhost:8000')
     products = api.product
     arome = products['66340f0b-2c2c-436d-a077-3d939f4f7283']
-    print arome.grid_resolution
+    print(arome.grid_resolution)
     """
 
     def __init__(self, base_url, verify_ssl=True, username=None, api_key=None, timeout=3):

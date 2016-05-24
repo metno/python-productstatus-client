@@ -48,7 +48,7 @@ class Client(object):
         self.pprint(hash_)
 
     def pprint(self, hash_):
-        print json.dumps(hash_, sort_keys=True, indent=4, separators=(',', ': '))
+        print(json.dumps(hash_, sort_keys=True, indent=4, separators=(',', ': ')))
 
     def args_in_schema(self, args_dict):
         schema_keys = self.schema['fields'].keys()
