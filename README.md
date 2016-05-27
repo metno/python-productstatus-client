@@ -12,7 +12,7 @@ The [Productstatus code](https://github.com/metno/nir) can be found on Github.
 
 ```
 cd python-productstatus-client
-virtualenv deps
+virtualenv --python python3 deps
 source deps/bin/activate
 python setup.py develop
 ```
