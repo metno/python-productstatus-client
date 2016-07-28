@@ -45,7 +45,7 @@ class Api(object):
         @param api_key Client API key.
         @param timeout Request timeout in seconds.
         """
-        self._base_url = base_url
+        self._base_url = base_url.rstrip('/')
         self._url_prefix = '/api/v1/'
         self._url = productstatus.utils.build_url(self._base_url, self._url_prefix)
         self._verify_ssl = verify_ssl
@@ -300,6 +300,12 @@ class QuerySet(object):
         else:
             self._filters[key] = value
 
+    def _dict(self):
+        """!
+        @brief Return a simple serializable dictionary representation of the entire QuerySet.
+        """
+        return [x._dict() for x in self]
+
     def __getitem__(self, index):
         """
         Return the Resource of Nth index in the search results, running a
@@ -463,6 +469,15 @@ class Resource(object):
         """
         return self._url is not None
 
+    def _uri(self):
+        """!
+        @brief Returns the resource URI. Raises an exception if the current
+        resource does not have an URL defined.
+        """
+        if not self._has_url():
+            raise productstatus.exceptions.ProductstatusException('Trying to get the object URI without a valid URL')
+        return self._url.replace(self._api._base_url, '')
+
     def _get_resource_from_server(self):
         """
         Fetch the resource from the API server.
@@ -484,15 +499,21 @@ class Resource(object):
         if self._has_url() and not self._data:
             self._get_resource_from_server()
 
-    def _serialize(self):
-        """
-        Return a JSON serialized representation of this resource.
+    def _dict(self):
+        """!
+        @brief Return a simple serializable dictionary representation of this Resource.
         """
         self._ensure_complete_object()
         data = {}
         for key in self._data.keys():
             data[key] = self._serialize_member(key)
-        return json.dumps(data)
+        return data
+
+    def _serialize(self):
+        """
+        Return a JSON serialized representation of this resource.
+        """
+        return json.dumps(self._dict())
 
     def _serialize_member(self, name):
         """
@@ -540,6 +561,11 @@ class Resource(object):
         fields = self._collection.schema['fields']
         if name not in fields:
             raise AttributeError('Attribute does not exist: %s' % name)
+        # This value usually comes from the server, but to cut down on requests
+        # and make the API client a lot faster when iterating on huge data
+        # sets, we generate it here instead.
+        if name == 'resource_uri' and name not in self._data:
+            return self._uri()
         self._ensure_complete_object()
         if name not in self._data:
             return None
