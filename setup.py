@@ -12,7 +12,7 @@ config = {
         'requests==2.9.1',
         'python-dateutil==2.5.0',
         'httmock==1.2.4',
-        'kafka-python==1.1.1',
+        'kafka-python==1.2.5',
     ],
     'packages': find_packages(),
     'scripts': [],
