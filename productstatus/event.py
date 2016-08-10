@@ -67,6 +67,12 @@ class Listener(object):
             ctx.verify_mode = ssl.CERT_NONE
         return ctx
 
+    def close(self):
+        """!
+        @brief Close the Kafka connection.
+        """
+        self.json_consumer.close()
+
     def get_next_event(self):
         """!
         @brief Block until a message is received, or a timeout is reached, and

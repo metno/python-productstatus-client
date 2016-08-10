@@ -79,6 +79,16 @@ class Api(object):
             self._event_listener = productstatus.event.Listener(str(configuration.topic), **kwargs)
         return self._event_listener
 
+    def delete_event_listener(self):
+        """!
+        @brief Destroy the event listener object.
+        """
+        if not self._event_listener:
+            return
+        self._event_listener.close()
+        del self._event_listener
+        self._event_listener = None
+
     def _do_request(self, method, *args, **kwargs):
         """
         Run a request through the requests API. This function wraps
