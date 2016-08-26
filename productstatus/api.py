@@ -360,12 +360,13 @@ class ResourceCollection(object):
         """
         return Resource(self._api, self, None)
 
-    def find_or_create(self, data, order_by=None):
+    def find_or_create(self, data, order_by=None, extra_params={}):
         """
         Find or create a resource matching the given parameters in the
         `data` variable. If none is found, created and save one.
         @param data data to search for, or to set if nothing is found
         @param order_by ordering
+        @param extra_params Extra parameters to insert into the object, without searching for them
         @returns a single Resource object.
         """
         # search for existing
@@ -379,6 +380,7 @@ class ResourceCollection(object):
             logging.info('No matching %s resource found, creating...' % self._resource_name)
             resource = self.create()
             [setattr(resource, key, value) for key, value in data.items()]
+            [setattr(resource, key, value) for key, value in extra_params.items()]
             resource.save()
             logging.info('%s: resource created' % resource)
         else:
