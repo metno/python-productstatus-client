@@ -360,13 +360,13 @@ class ResourceCollection(object):
         """
         return Resource(self._api, self, None)
 
-    def find_or_create(self, data, order_by=None, extra_params={}):
+    def find_or_create_ephemeral(self, data, order_by=None, extra_params={}):
         """
-        Find or create a resource matching the given parameters in the
-        `data` variable. If none is found, created and save one.
-        @param data data to search for, or to set if nothing is found
-        @param order_by ordering
-        @param extra_params Extra parameters to insert into the object, without searching for them
+        Find or create a resource matching the given parameters in the `data`
+        variable. If none is found, one is created, but it is NOT saved to Productstatus.
+
+        Parameters as ResourceCollection.find_or_create.
+
         @returns a single Resource object.
         """
         # search for existing
@@ -381,12 +381,26 @@ class ResourceCollection(object):
             resource = self.create()
             [setattr(resource, key, value) for key, value in data.items()]
             [setattr(resource, key, value) for key, value in extra_params.items()]
-            resource.save()
-            logging.info('%s: resource created' % resource)
+            logging.info('%s: ephemeral resource created' % resource)
         else:
             resource = qs[0]
             logging.info('%s: using existing resource' % resource)
 
+        return resource
+
+    def find_or_create(self, data, order_by=None, extra_params={}):
+        """
+        Find or create a resource matching the given parameters in the
+        `data` variable. If none is found, create one and save it as a new Resource.
+        @param data data to search for, or to set if nothing is found
+        @param order_by ordering
+        @param extra_params Extra parameters to insert into the object, without searching for them
+        @returns a single Resource object.
+        """
+        resource = self.find_or_create_ephemeral(*args, **kwargs)
+        if not resource.id:
+            resource.save()
+            logging.info('%s: resource created' % resource)
         return resource
 
     def _get_schema_from_server(self):
