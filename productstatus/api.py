@@ -365,8 +365,9 @@ class ResourceCollection(object):
         Find or create a resource matching the given parameters in the `data`
         variable. If none is found, one is created, but it is NOT saved to Productstatus.
 
-        Parameters as ResourceCollection.find_or_create.
-
+        @param data data to search for, or to set if nothing is found
+        @param order_by ordering
+        @param extra_params Extra parameters to insert into the object, without searching for them
         @returns a single Resource object.
         """
         # search for existing
@@ -388,14 +389,12 @@ class ResourceCollection(object):
 
         return resource
 
-    def find_or_create(self, data, order_by=None, extra_params={}):
+    def find_or_create(self, *args, **kwargs):
         """
         Find or create a resource matching the given parameters in the
         `data` variable. If none is found, create one and save it as a new Resource.
-        @param data data to search for, or to set if nothing is found
-        @param order_by ordering
-        @param extra_params Extra parameters to insert into the object, without searching for them
-        @returns a single Resource object.
+
+        Parameters as ResourceCollection.find_or_create_ephemeral.
         """
         resource = self.find_or_create_ephemeral(*args, **kwargs)
         if not resource.id:
