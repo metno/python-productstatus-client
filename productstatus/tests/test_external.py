@@ -424,6 +424,16 @@ class ExternalTest(unittest.TestCase):
         with self.assertRaises(productstatus.exceptions.InvalidFilterDataException):
             qs.filter(created=dt)
 
+    def test_filter_ephemeral_resource(self):
+        """!
+        @brief Test that ephemeral resources cannot be used to filter queries.
+        """
+        with httmock.HTTMock(req_schema, req_foo_schema):
+            qs = self.api.foo.objects
+            ephemeral = self.api.foo.create()
+            with self.assertRaises(productstatus.exceptions.InvalidFilterDataException):
+                qs.filter(bar=ephemeral)
+
     def test_query_normalize_utc(self):
         """
         Test that datetime objects used in filtering are sent as UTC.

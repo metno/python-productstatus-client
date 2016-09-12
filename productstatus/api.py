@@ -300,6 +300,10 @@ class QuerySet(object):
         Add a filter to the search query, serializing if neccessary.
         """
         if isinstance(value, productstatus.api.Resource):
+            if not value.id:
+                raise productstatus.exceptions.InvalidFilterDataException(
+                    'Trying to filter "%s" by a Productstatus resource, but the resource is not persisted on the backend yet' % key
+                )
             self._filters[key] = value.id
         elif isinstance(value, datetime.datetime):
             if not value.tzname():
