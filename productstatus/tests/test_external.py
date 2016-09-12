@@ -355,7 +355,7 @@ class ExternalTest(unittest.TestCase):
         resource = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
         with httmock.HTTMock(req_put_foo_resource, req_foo_resource, req_bar_resource, req_foo_schema):
             serialized = resource._serialize()
-            foo_serialized = json.dumps(foo_unserialized)
+            foo_serialized = json.dumps(foo_unserialized, sort_keys=True)
             self.assertEqual(serialized, foo_serialized)
 
     def test_nonexistent_resource(self):
@@ -402,6 +402,7 @@ class ExternalTest(unittest.TestCase):
         with httmock.HTTMock(req_schema):
             qs = self.api.foo.objects
         qs.filter(foo='bar')
+        self.assertEqual(qs._filters['foo'], 'bar')
         with httmock.HTTMock(req_filter_foo_resource, req_foo_schema):
             resource = qs[0]
             self.assertIsInstance(resource.created, datetime.datetime)

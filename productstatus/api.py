@@ -278,7 +278,7 @@ class QuerySet(object):
         """
         Fetch results from the server.
         """
-        response = self._api._do_request('get', self._collection._url, params=self._filters)
+        response = self._api._do_request('get', self._collection._url, params=sorted(self._filters.items()))
         self._results = self._api._get_response_data(response)
 
     def execute_if_empty(self):
@@ -542,7 +542,7 @@ class Resource(object):
         """
         Return a JSON serialized representation of this resource.
         """
-        return json.dumps(self._dict())
+        return json.dumps(self._dict(), sort_keys=True)
 
     def _serialize_member(self, name):
         """
