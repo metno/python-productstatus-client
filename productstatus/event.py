@@ -4,7 +4,7 @@ where Productstatus server publishes its events
 """
 
 import logging
-import ssl
+import ssl as ssl_module
 import kafka
 import json
 import uuid
@@ -58,13 +58,18 @@ class Listener(object):
             kwargs['security_protocol'] = 'SSL'
             kwargs['ssl_context'] = Listener.create_security_context(ssl_verify)
 
-        self.json_consumer = kafka.KafkaConsumer(*args, **kwargs)
+        try:
+            self.json_consumer = kafka.KafkaConsumer(*args, **kwargs)
+        except ssl_module.SSLError as e:
+            raise productstatus.exceptions.SSLException(e)
 
     @staticmethod
     def create_security_context(verify_ssl=True):
-        ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
+        ctx = ssl_module.create_default_context()
+        ctx.protocol = ssl_module.PROTOCOL_TLSv1_2
         if not verify_ssl:
-            ctx.verify_mode = ssl.CERT_NONE
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl_module.CERT_NONE
         return ctx
 
     def close(self):

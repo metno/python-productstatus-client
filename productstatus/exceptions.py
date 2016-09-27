@@ -93,3 +93,10 @@ class EventTimeoutException(EventException):
     @brief Thrown when an event is not available on the Kafka socket.
     """
     pass
+
+
+class SSLException(ProductstatusException):
+    """!
+    @brief Thrown when the SSL library throws an exception.
+    """
+    pass
