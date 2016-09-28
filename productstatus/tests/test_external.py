@@ -1,5 +1,6 @@
 import unittest
 import httmock
+import mock
 import datetime
 import dateutil.tz
 import json
@@ -17,7 +18,7 @@ foo_unserialized = {
     "slug": "bar",
     "created": "2015-01-01T00:00:00+0000",
     "resource_uri": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
-    "bar": "/api/v1/foo/8a3c4389-8911-452e-b06b-dd7238c787a5/",
+    "bar": "/api/v1/foo/66340f0b-2c2c-436d-a077-3d939f4f7283/",
     "number": 1,
     "text": "baz"
 }
@@ -525,3 +526,28 @@ class ExternalTest(unittest.TestCase):
             qs = self.api.foo.objects
         qs.order_by('-foo', 'bar')
         self.assertEqual(qs._filters['order_by'], ['-foo', 'bar'])
+
+    def test_evaluated_resource(self):
+        """!
+        @brief Test that evaluated resources run the evaluation function.
+        """
+        with httmock.HTTMock(req_schema):
+            func = mock.MagicMock(return_value=self.api.foo.create())
+        lazy = productstatus.api.EvaluatedResource(func, 1, 2, a=1, b=2)
+        resource = lazy.resource
+        resource = lazy.resource
+        func.assert_called_once_with(1, 2, a=1, b=2)
+
+    def test_evaluated_resource_foreign_relation(self):
+        """!
+        @brief Test that evaluated resources can be used as foreign relations
+        in the same way as regular Resource objects.
+        """
+        with httmock.HTTMock(req_post_foo_resource, req_foo_resource, req_foo_schema):
+            relation = self.api.foo['66340f0b-2c2c-436d-a077-3d939f4f7283']
+            func = mock.MagicMock(return_value=relation)
+            lazy = productstatus.api.EvaluatedResource(func)
+            resource = self.api.foo.create()
+            resource.bar = lazy.resource
+            resource.save()
+            self.assertEqual(resource.bar.id, relation.id)

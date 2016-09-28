@@ -299,6 +299,8 @@ class QuerySet(object):
         """
         Add a filter to the search query, serializing if neccessary.
         """
+        if isinstance(value, productstatus.api.EvaluatedResource):
+            value = value.resource
         if isinstance(value, productstatus.api.Resource):
             if not value.id:
                 raise productstatus.exceptions.InvalidFilterDataException(
@@ -484,10 +486,11 @@ class Resource(object):
         """
         Store the locally cached values on the server.
         """
+        serialized = self._serialize()
         if self._has_url():
-            response = self._api._do_request('put', self._url, data=self._serialize())
+            response = self._api._do_request('put', self._url, data=serialized)
         else:
-            response = self._api._do_request('post', self._collection._url, data=self._serialize())
+            response = self._api._do_request('post', self._collection._url, data=serialized)
             self._url = productstatus.utils.build_url(self._api._base_url, response.headers['Location'])
         self._data = {}  # invalidate local cache
 
@@ -528,6 +531,13 @@ class Resource(object):
         if self._has_url() and not self._data:
             self._get_resource_from_server()
 
+    def _evaluate_resource_member(self, key):
+        """!
+        @brief Run lazy evaluation on EvaluatedResource objects.
+        """
+        if isinstance(self._data[key], EvaluatedResource):
+            self._data[key] = self._data[key].resource
+
     def _dict(self):
         """!
         @brief Return a simple serializable dictionary representation of this Resource.
@@ -550,6 +560,9 @@ class Resource(object):
         """
         if self._data[name] is None:
             return None
+
+        # Run lazy evaluation
+        self._evaluate_resource_member(name)
 
         description = self._collection.schema['fields'][name]
         type_ = description['type']
@@ -598,6 +611,8 @@ class Resource(object):
         self._ensure_complete_object()
         if name not in self._data:
             return None
+        # Run lazy evaluation
+        self._evaluate_resource_member(name)
         return self._data[name]
 
     def __setattr__(self, name, value):
@@ -624,6 +639,34 @@ class Resource(object):
         if self._has_url():
             return '<Resource at %s>' % self.resource_uri
         return '<non-persistent %s Resource>' % self._collection._resource_name
+
+
+class EvaluatedResource(object):
+    """!
+    @brief Represents a resource that will be lazily evaluated through a
+    function. The function is not evaluated until the moment it is saved.
+    """
+    def __init__(self, function, *args, **kwargs):
+        """!
+        @param function The function that will be evaluated to return a resource.
+        @param args Indexed argument list to the function.
+        @param kwargs Named argument list to the function.
+        """
+        self._resource = None
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+
+    @property
+    def resource(self):
+        """!
+        @brief Run the lazy evaluation and return a Resource object.
+        """
+        if not self._resource:
+            self._resource = self.function(*self.args, **self.kwargs)
+            if not isinstance(self._resource, Resource):
+                raise RuntimeError('Lazy evaluated function "%s" did not return a Resource object.' % self.function.__name__)
+        return self._resource
 
 
 class TastypieApiKeyAuth(requests.auth.AuthBase):
