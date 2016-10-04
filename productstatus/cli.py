@@ -26,7 +26,29 @@ class Client(object):
         self.setup_basic_parser()
         self.parser.add_argument('...', nargs=argparse.REMAINDER)
 
+    def call_productstatus(func):
+        """
+        Decorator for proper error handling of calls to the productstatus service.
+        """
+        def decorated(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except productstatus.exceptions.UnauthorizedException:
+                self._exit(2)
+            except productstatus.exceptions.NotFoundException:
+                self._exit(3)
+            except productstatus.exceptions.ServiceUnavailableException:
+                self._exit(4)
+            except productstatus.exceptions.ProductstatusException:
+                self._exit(255)
+            except:
+                self._exit(1)
+
+        return decorated
+
+    @call_productstatus
     def setup_sub_commands(self):
+
         self.setup_preliminary_parser()
         args = self.parser.parse_args()
         self.api = productstatus.api.Api(args.server, username=args.username, api_key=args.api_key)
@@ -100,23 +122,13 @@ class Client(object):
         for action in ['get']:
             self.subparsers[action].add_argument('uuid', help='The UUID of a %s object' % subcommand)
 
+    @call_productstatus
     def _exec(self, args, args_dict):
         """
         Execute command set by func attribute.
         Catch exceptions, print traceback and exit program with proper exit_code.
         """
-        try:
-            args.func(args_dict)
-        except productstatus.exceptions.UnauthorizedException:
-            self._exit(2)
-        except productstatus.exceptions.NotFoundException:
-            self._exit(3)
-        except productstatus.exceptions.ServiceUnavailableException:
-            self._exit(4)
-        except productstatus.exceptions.ProductstatusException:
-            self._exit(255)
-        except:
-            self._exit(1)
+        args.func(args_dict)
 
     def _exit(self, exit_code):
         traceback.print_exc()
