@@ -18,6 +18,11 @@ python setup.py develop
 ```
 
 
+## Examples of use
+
+Load your virtualenv and run the example scripts in the `examples/` directory.
+
+
 ## Running unit tests
 
 ```
