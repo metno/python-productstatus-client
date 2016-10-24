@@ -289,11 +289,17 @@ class QuerySet(object):
             self.execute()
 
     def count(self):
-        """
-        Return the number of results in the search query.
+        """!
+        @brief Return the number of results in the search query.
         """
         self.execute_if_empty()
         return self._results['meta']['total_count']
+
+    def __len__(self):
+        """!
+        @see count().
+        """
+        return self.count()
 
     def _add_filter(self, key, value):
         """
