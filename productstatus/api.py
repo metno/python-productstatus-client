@@ -89,6 +89,13 @@ class Api(object):
         del self._event_listener
         self._event_listener = None
 
+    def has_credentials(self):
+        """!
+        @brief Returns True if a username and API key was supplied with the API
+        object constructor, False otherwise.
+        """
+        return self._session.auth is not None
+
     def _do_request(self, method, *args, **kwargs):
         """
         Run a request through the requests API. This function wraps
