@@ -53,7 +53,7 @@ class SerializeBase(object):
         Return a time zone-aware ISO 8601 string.
         """
         if value.tzinfo is None:
-            raise ValueError
+            raise ValueError('Timezone not defined in datetime %s', value)
         utc_time = value.astimezone(tz=dateutil.tz.tzutc())
         return utc_time.isoformat().replace(' ', 'T').replace('+00:00', 'Z')
 
