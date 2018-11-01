@@ -5,15 +5,13 @@
 
 This is a Python module used to access a Productstatus REST API server.
 
-The [Productstatus code](https://github.com/metno/nir) can be found on Github.
+The [Productstatus code](https://github.com/metno/productstatus) can be found on Github.
 
 
 ## Setting up a development environment
 
 ```
-cd python-productstatus-client
-virtualenv --python python3 deps
-source deps/bin/activate
+mkvirtualenv python-productstatus-client
 python setup.py develop
 ```
 
@@ -46,13 +44,13 @@ REST API resource collections (e.g. `/api/v1/product/`) can be accessed as objec
 
 ```
 product = api.product['f314a536-bb96-4d2a-83cd-9764e2e3e16a']
-print product.name  # 'AROME MetCoOp 2500m'
+print(product.name)  # 'AROME MetCoOp 2500m'
 ```
 
 Foreign keys on resources are automatically resolved into objects:
 
 ```
-print product.institution.name  # 'MET Norway'
+print(product.institution.name)  # 'MET Norway'
 ```
 
 You can run filtering queries to find the object you are looking for:
@@ -62,9 +60,9 @@ productinstances = api.productinstance.objects
 productinstances.filter(product=product, reference_time=datetime.datetime(2015, 1, 1))
 productinstances.order_by('-version')
 productinstances.limit(2)
-print productinstances.count()  # 2
+print(productinstances.count())  # 2
 productinstance = productinstances[0]
-print productinstance.product.resource_uri == product.resource_uri  # True
+print(productinstance.product.resource_uri == product.resource_uri)  # True
 ```
 
 Creating new objects are done using the resource collection:
@@ -74,7 +72,7 @@ new_productinstance = api.productinstance.create()
 new_productinstance.reference_time = datetime.datetime.now()
 new_productinstance.product = product
 new_productinstance.save()
-print new_productinstance.id  # '4560279d-ef3e-49ae-bf2e-0dabac1b9e74'
+print(new_productinstance.id)  # '4560279d-ef3e-49ae-bf2e-0dabac1b9e74'
 ```
 
 You can also edit an existing object:
@@ -87,7 +85,7 @@ productinstance.save()
 Lastly, you can access the schema to get an idea of how the data model looks like:
 
 ```
-print api.productinstance.schema  # { 'huge': 'dictionary' }
+print(api.productinstance.schema)  # { 'huge': 'dictionary' }
 ```
 
 
@@ -171,13 +169,48 @@ See cli.py code for the mapping between exceptions and various exit codes.
 
 ## Listening for Productstatus message queue events
 
-The event listener is asynchronous, and will queue incoming messages until you fetch them with `get_next_event()`. TCP keepalive is enabled.
+The event listener is asynchronous, and will queue incoming messages until you fetch them with `get_next_event()`.
+
+See examples/events.py
+
 
 ```
-import productstatus.event
-listener = productstatus.event.Listener('tcp://hostname:port')
+import productstatus.api
+import productstatus.exceptions
+
+import json
+
+api = productstatus.api.Api(
+    'https://productstatus.met.no'
+)
+
+# You can easily set up an event listener using the API client. The default operation is to block
+# until an event is received, or you can specify a timeout in the constructor.
+event_listener = api.get_event_listener()
+
+print('Listening for events...')
+print()
+
+# Loop through received events.
 while True:
-    message = listener.get_next_event()  # blocks until the next message is received
-    print message.resource     # it behaves as an object...
-    print message['resource']  # or a dictionary
+    try:
+        event = event_listener.get_next_event()
+    except productstatus.exceptions.EventTimeoutException:
+        pass
+    print(json.dumps(event, indent=4))
+    print()
+
+    if event.type == 'heartbeat':
+        print('Received heartbeat with timestamp', event.message_timestamp)
+    elif event.type == 'resource':
+        print('Received resource of type', event.resource)
+        if event.resource == 'datainstance':
+            datainstance = api[event.uri]
+            print('DataInstance URL:', datainstance.url)
+            print('DataInstance product name:', datainstance.data.productinstance.product.name)
+            print('DataInstance product slug:', datainstance.data.productinstance.product.slug)
+
+    print()
+
+
 ```
