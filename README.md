@@ -15,6 +15,12 @@ mkvirtualenv python-productstatus-client
 python setup.py develop
 ```
 
+## Building for pypi
+```
+python setup.py sdist bdist_wheel
+twine upload dist/*
+```
+
 
 ## Examples of use
 
