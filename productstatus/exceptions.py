@@ -17,13 +17,6 @@ class InvalidFilterDataException(ProductstatusException):
     pass
 
 
-class InvalidFilterDataException(ProductstatusException):
-    """
-    Thrown when filter data for query sets are invalid.
-    """
-    pass
-
-
 class ClientErrorException(ProductstatusException):
     """
     Thrown when the server returns a 4xx error.

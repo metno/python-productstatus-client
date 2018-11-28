@@ -59,3 +59,6 @@ target/
 # Virtualenv
 /deps/
 /.virtualenv/
+
+# Visual Studio Code
+.vscode/
