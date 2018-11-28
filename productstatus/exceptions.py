@@ -87,6 +87,10 @@ class EventTimeoutException(EventException):
     """
     pass
 
+class KafkaPartitionAssignment(EventException):
+    """!
+    @brief Thrown when Kafka partition assignment is not ready.
+    """
 
 class SSLException(ProductstatusException):
     """!

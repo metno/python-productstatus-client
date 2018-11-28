@@ -91,6 +91,39 @@ class Listener(object):
             pass
         raise productstatus.exceptions.EventTimeoutException('Timeout while waiting for next event')
 
+    def get_position(self):
+        """!
+        @brief Get the offset of the next record that will be fetched
+        @returns int.
+        """
+        assignment = self.json_consumer.assignment()
+        if len(assignment) == 0:
+            raise productstatus.exceptions.KafkaPartitionAssignment('No partitions assigned')
+
+        if len(assignment) > 1:
+            raise productstatus.exceptions.KafkaPartitionAssignment('More than one partition assigned')
+
+        if len(assignment) == 1:
+            partition = next(iter(assignment))
+            return self.json_consumer.position(partition)
+
+    def get_last_committed_offset(self):
+        """!
+        @brief Return the last committed offset
+        @returns The last committed offset, or None if there was no prior commit.
+        """
+        assignment = self.json_consumer.assignment()
+        if len(assignment) == 0:
+            raise productstatus.exceptions.KafkaPartitionAssignment('No partitions assigned')
+
+        if len(assignment) > 1:
+            raise productstatus.exceptions.KafkaPartitionAssignment('More than one partition assigned')
+
+        if len(assignment) == 1:
+            partition = next(iter(assignment))
+            return self.json_consumer.committed(partition)
+
+
     def save_position(self):
         """!
         @brief Store the client's position in the message queue.
