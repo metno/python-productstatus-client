@@ -66,7 +66,6 @@ class Listener(object):
     @staticmethod
     def create_security_context(verify_ssl=True):
         ctx = ssl_module.create_default_context()
-        ctx.protocol = ssl_module.PROTOCOL_TLSv1_2
         if not verify_ssl:
             ctx.check_hostname = False
             ctx.verify_mode = ssl_module.CERT_NONE
