@@ -7,6 +7,7 @@ config = {
     'url': 'https://github.com/metno/python-productstatus-client',
     'download_url': 'https://github.com/metno/python-productstatus-client',
     'version': '7.0.0',
+    'python_requires': '>=3.6',
     'install_requires': [
         'nose==1.3.7',
         'requests==2.20.0',
