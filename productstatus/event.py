@@ -87,19 +87,20 @@ class Listener(object):
         """
         self.json_consumer.close()
 
-    def get_next_event(self, return_kafka_offset=False):
+    def get_next_event(self, return_kafka_topic_offset=False):
         """!
         @brief Block until a message is received, or a timeout is reached, and
         return the message object. Raises an exception if a timeout is reached.
 
-        @param return_kafka_offsett If true, returns offset value on the
-            message in the kafka queue.
+        @param return_kafka_topic_offset If True, returns a dict with
+            {topic, offset} for the message in the kafka queue.
         @returns Message object or (Message object, offset) object.
         """
         try:
             for message in self.json_consumer:
-                if return_kafka_offset:
-                    return Message(message.value), message.offset
+                if return_kafka_topic_offset:
+                    return (Message(message.value),
+                            {message.topic: message.offset})
                 else:
                     return Message(message.value)
         except StopIteration:
@@ -110,6 +111,7 @@ class Listener(object):
         """!
         @brief Store the client's position in the message queue.
 
-        Wrap KafkaConsumer.commit()
+        Wraps KafkaConsumer.commit(). Example usage:
+        `self.save_position({"productstatus", 54})` will commit msg. with offset 54 on the topic `"productstatus"`.
         """
         self.json_consumer.commit(offsets)
