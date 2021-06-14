@@ -31,6 +31,20 @@ class Listener(object):
     """!
     @brief Kafka event listener client that provides a simple interface for
     fetching the next event from the queue.
+
+    Note on commiting messages:
+        By default, all messages will be auto_commited. Instead, one can commit
+        messages manually. Thus, next time the client is run, it will resume
+        from the next message (or ant previous message that is not comitted
+        yet). To use this function properly, you must set following values when
+        instantiating the Listener object:
+        - set `client_id` and `group_id`
+        - set `enable_auto_commit` = False
+        - set auto_offset_reset = "earliest" Due to `auto_offset_reset =
+          "earliest"`, one will receive also messages prior to the first time
+          connection. If the message at the current distribution time has the
+          offsett 500 (arbirary choice), you may want to commit all messages
+          with offsetts 1 to 500 in the initial setup.
     """
 
     def __init__(self, *args, ssl=False, ssl_verify=True, **kwargs):
@@ -41,14 +55,10 @@ class Listener(object):
         and group UUIDs will be auto-generated if not specified.
         """
 
-        if 'client_id' not in kwargs or not kwargs['client_id']:
-            kwargs['client_id'] = str(uuid.uuid4())
-
-        if 'group_id' not in kwargs or not kwargs['group_id']:
-            kwargs['group_id'] = str(uuid.uuid4())
-
-        kwargs['enable_auto_commit'] = False
-        kwargs['value_deserializer'] = unserialize
+        kwargs.setdefault('client_id', str(uuid.uuid4()))
+        kwargs.setdefault('group_id', str(uuid.uuid4()))
+        kwargs.setdefault('enable_auto_commit', True)
+        kwargs.setdefault('value_deserializer', unserialize)
 
         self.client_id = kwargs['client_id']
         self.group_id = kwargs['group_id']
@@ -77,26 +87,29 @@ class Listener(object):
         """
         self.json_consumer.close()
 
-    def get_next_event(self):
+    def get_next_event(self, return_kafka_offset=False):
         """!
         @brief Block until a message is received, or a timeout is reached, and
         return the message object. Raises an exception if a timeout is reached.
-        @returns a Message object.
+
+        @param return_kafka_offsett If true, returns offset value on the
+            message in the kafka queue.
+        @returns Message object or (Message object, offset) object.
         """
         try:
             for message in self.json_consumer:
-                return Message(message.value)
+                if return_kafka_offset:
+                    return Message(message.value), message.offset
+                else:
+                    return Message(message.value)
         except StopIteration:
             pass
         raise productstatus.exceptions.EventTimeoutException('Timeout while waiting for next event')
 
-    def save_position(self):
+    def save_position(self, offsets=None):
         """!
         @brief Store the client's position in the message queue.
 
-        When this function is used, Kafka will store the client's message queue
-        position. Thus, next time the client is run, it will resume from the
-        next message. To use this function properly, you must set `client_id`
-        and `group_id` when instantiating the Listener object.
+        Wrap KafkaConsumer.commit()
         """
-        self.json_consumer.commit()
+        self.json_consumer.commit(offsets)
