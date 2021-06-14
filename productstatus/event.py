@@ -2,12 +2,11 @@
 The productstatus.event module is an interface to the Kafka distributed commit log
 where Productstatus server publishes its events
 """
-
-import logging
-import ssl as ssl_module
-import kafka
 import json
+import kafka
+import ssl as ssl_module
 import uuid
+from kafka import TopicPartition, OffsetAndMetadata
 
 import productstatus.exceptions
 
@@ -35,8 +34,12 @@ class Listener(object):
     Note on commiting messages:
         By default, all messages will be auto_commited. Instead, one can commit
         messages manually. Thus, next time the client is run, it will resume
-        from the next message (or ant previous message that is not comitted
-        yet). To use this function properly, you must set following values when
+        from the next message. However, note that one _cannot_ commit specific
+        messages, like nr. 3 in [1, 2, 3, 4, 5, ...] to receive
+        [1, 2, 4, 5, ...]. Instead, if you commit nr.3, you will get
+        [4, 5, ...].
+
+        To use this function properly, you must set following values when
         instantiating the Listener object:
         - set `client_id` and `group_id`
         - set `enable_auto_commit` = False
@@ -93,14 +96,16 @@ class Listener(object):
         return the message object. Raises an exception if a timeout is reached.
 
         @param return_kafka_topic_offset If True, returns a dict with
-            {topic, offset} for the message in the kafka queue.
+            {topic, offset} for the message in the kafka queue. The
+            types are {TopicPartition, OffsetAndMetadata}
         @returns Message object or (Message object, offset) object.
         """
         try:
             for message in self.json_consumer:
                 if return_kafka_topic_offset:
-                    return (Message(message.value),
-                            {message.topic: message.offset})
+                    rettop = {TopicPartition(message.topic, message.partition):
+                              OffsetAndMetadata(message.offset, "")}
+                    return (Message(message.value), rettop)
                 else:
                     return Message(message.value)
         except StopIteration:
@@ -111,7 +116,6 @@ class Listener(object):
         """!
         @brief Store the client's position in the message queue.
 
-        Wraps KafkaConsumer.commit(). Example usage:
-        `self.save_position({"productstatus", 54})` will commit msg. with offset 54 on the topic `"productstatus"`.
+        Wraps KafkaConsumer.commit().
         """
         self.json_consumer.commit(offsets)
