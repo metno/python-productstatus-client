@@ -9,7 +9,7 @@ config = {
     'version': '7.0.0',
     'install_requires': [
         'nose==1.3.7',
-        'requests==2.20.0',
+        'requests==2.31.0',
         'python-dateutil==2.7.5',
         'httmock==1.2.6',
         'kafka-python==1.4.3',
